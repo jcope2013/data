@@ -1,13 +1,14 @@
 import OrderedSet from "ember-data/system/ordered-set";
 
 export default function Relationship(store, record, inverseKey, relationshipMeta) {
+  var async = relationshipMeta.options.async;
   this.members = new OrderedSet();
   this.canonicalMembers = new OrderedSet();
   this.store = store;
   this.key = relationshipMeta.key;
   this.inverseKey = inverseKey;
   this.record = record;
-  this.isAsync = relationshipMeta.options.async;
+  this.isAsync = typeof async === 'undefined' ? true : async;
   this.relationshipMeta = relationshipMeta;
   //This probably breaks for polymorphic relationship in complex scenarios, due to
   //multiple possible modelNames
@@ -34,14 +35,6 @@ Relationship.prototype = {
       member = members[0];
       this.removeRecord(member);
     }
-  },
-
-  disconnect: function() {
-    this.members.forEach((member) => this.removeRecordFromInverse(member));
-  },
-
-  reconnect: function() {
-    this.members.forEach((member) => this.addRecordToInverse(member));
   },
 
   removeRecords: function(records) {
@@ -137,12 +130,6 @@ Relationship.prototype = {
     }
   },
 
-  addRecordToInverse: function(record) {
-    if (this.inverseKey) {
-      record._relationships.get(this.inverseKey).addRecord(this.record);
-    }
-  },
-
   removeRecordFromInverse: function(record) {
     var inverseRelationship = record._relationships.get(this.inverseKey);
     //Need to check for existence, as the record might unloading at the moment
@@ -196,7 +183,9 @@ Relationship.prototype = {
   },
 
   updateLink: function(link) {
-    Ember.warn("You have pushed a record of type '" + this.record.type.modelName + "' with '" + this.key + "' as a link, but the association is not an async relationship.", this.isAsync);
+    Ember.warn(`You have pushed a record of type '${this.record.type.modelName}' with '${this.key}' as a link, but the association is not an async relationship.`, this.isAsync, {
+      id: 'ds.store.push-link-for-sync-relationship'
+    });
     Ember.assert("You have pushed a record of type '" + this.record.type.modelName + "' with '" + this.key + "' as a link, but the value of that link is not a string.", typeof link === 'string' || link === null);
     if (link !== this.link) {
       this.link = link;

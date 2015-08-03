@@ -101,7 +101,7 @@ var Adapter = Ember.Object.extend({
         var url = [type.modelName, id].join('/');
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
-          jQuery.getJSON(url).then(function(data) {
+          Ember.$.getJSON(url).then(function(data) {
             Ember.run(null, resolve, data);
           }, function(jqXHR) {
             jqXHR.then = null; // tame jQuery's ill mannered promises
@@ -134,7 +134,7 @@ var Adapter = Ember.Object.extend({
         var url = type;
         var query = { since: sinceToken };
         return new Ember.RSVP.Promise(function(resolve, reject) {
-          jQuery.getJSON(url, query).then(function(data) {
+          Ember.$.getJSON(url, query).then(function(data) {
             Ember.run(null, resolve, data);
           }, function(jqXHR) {
             jqXHR.then = null; // tame jQuery's ill mannered promises
@@ -166,7 +166,7 @@ var Adapter = Ember.Object.extend({
       query: function(store, type, query) {
         var url = type;
         return new Ember.RSVP.Promise(function(resolve, reject) {
-          jQuery.getJSON(url, query).then(function(data) {
+          Ember.$.getJSON(url, query).then(function(data) {
             Ember.run(null, resolve, data);
           }, function(jqXHR) {
             jqXHR.then = null; // tame jQuery's ill mannered promises
@@ -205,7 +205,7 @@ var Adapter = Ember.Object.extend({
         var url = [type.typeKey, id].join('/');
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
-          jQuery.getJSON(url, query).then(function(data) {
+          Ember.$.getJSON(url, query).then(function(data) {
             Ember.run(null, resolve, data);
           }, function(jqXHR) {
             jqXHR.then = null; // tame jQuery's ill mannered promises
@@ -299,7 +299,7 @@ var Adapter = Ember.Object.extend({
         var url = type;
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
-          jQuery.ajax({
+          Ember.$.ajax({
             type: 'POST',
             url: url,
             dataType: 'json',
@@ -341,7 +341,7 @@ var Adapter = Ember.Object.extend({
         var url = [type, id].join('/');
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
-          jQuery.ajax({
+          Ember.$.ajax({
             type: 'PUT',
             url: url,
             dataType: 'json',
@@ -383,7 +383,7 @@ var Adapter = Ember.Object.extend({
         var url = [type, id].join('/');
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
-          jQuery.ajax({
+          Ember.$.ajax({
             type: 'DELETE',
             url: url,
             dataType: 'json',
@@ -454,8 +454,8 @@ var Adapter = Ember.Object.extend({
     reload a record from the adapter when a record is requested by
     `store.findRecord`.
 
-    If this method returns true the store will re fetch a record from
-    the adapter. If is method returns false the store will resolve
+    If this method returns true, the store will re-fetch a record from
+    the adapter. If this method returns false, the store will resolve
     immediately using the cached record.
 
     @method shouldReloadRecord
@@ -472,19 +472,17 @@ var Adapter = Ember.Object.extend({
     reload all records from the adapter when records are requested by
     `store.findAll`.
 
-    If this method returns true the store will re fetch all records from
-    the adapter. If is method returns false the store will resolve
+    If this method returns true, the store will re-fetch all records from
+    the adapter. If this method returns false, the store will resolve
     immediately using the cached record.
 
-    @method shouldReloadRecord
+    @method shouldReloadAll
     @param {DS.Store} store
     @param {DS.SnapshotRecordArray} snapshotRecordArray
     @return {Boolean}
   */
   shouldReloadAll: function(store, snapshotRecordArray) {
-    var modelName = snapshotRecordArray.type.modelName;
-    Ember.deprecate(`The default behavior of shouldReloadAll will change in Ember Data 2.0 to always return false when there is at least one "${modelName}" record in the store. If you would like to preserve the current behavior please override shouldReloadAll in your adapter:application and return true.`);
-    return true;
+    return !snapshotRecordArray.length;
   },
 
   /**
@@ -504,8 +502,7 @@ var Adapter = Ember.Object.extend({
     @return {Boolean}
   */
   shouldBackgroundReloadRecord: function(store, snapshot) {
-    Ember.deprecate('The default behavior of `shouldBackgroundReloadRecord` will change in Ember Data 2.0 to always return true. If you would like to preserve the current behavior please override `shouldBackgroundReloadRecord` in your adapter:application and return false.');
-    return false;
+    return true;
   },
 
   /**

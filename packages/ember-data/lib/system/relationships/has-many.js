@@ -4,6 +4,7 @@
 
 import Model from "ember-data/system/model";
 import normalizeModelName from "ember-data/system/normalize-model-name";
+import isArrayLike from "ember-data/system/is-array-like";
 
 /**
   `DS.hasMany` is used to define One-To-Many and Many-To-Many
@@ -121,11 +122,6 @@ function hasMany(type, options) {
 
   options = options || {};
 
-  var shouldWarnAsync = false;
-  if (typeof options.async === 'undefined') {
-    shouldWarnAsync = true;
-  }
-
   if (typeof type === 'string') {
     type = normalizeModelName(type);
   }
@@ -139,23 +135,18 @@ function hasMany(type, options) {
     isRelationship: true,
     options: options,
     kind: 'hasMany',
-    key: null,
-    shouldWarnAsync: shouldWarnAsync
+    key: null
   };
 
   return Ember.computed({
     get: function(key) {
-      if (meta.shouldWarnAsync) {
-        Ember.deprecate(`In Ember Data 2.0, relationships will be asynchronous by default. You must set \`${key}: DS.hasMany('${type}', { async: false })\` if you wish for a relationship remain synchronous.`);
-        meta.shouldWarnAsync = false;
-      }
       var relationship = this._internalModel._relationships.get(key);
       return relationship.getRecords();
     },
     set: function(key, records) {
       var relationship = this._internalModel._relationships.get(key);
       relationship.clear();
-      Ember.assert("You must pass an array of records to set a hasMany relationship", Ember.isArray(records));
+      Ember.assert("You must pass an array of records to set a hasMany relationship", isArrayLike(records));
       relationship.addRecords(Ember.A(records).mapBy('_internalModel'));
       return relationship.getRecords();
     }

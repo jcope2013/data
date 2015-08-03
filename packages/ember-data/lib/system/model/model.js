@@ -6,6 +6,8 @@ import Errors from "ember-data/system/model/errors";
 */
 
 var get = Ember.get;
+var merge = Ember.merge;
+var copy = Ember.copy;
 
 function intersection (array1, array2) {
   var result = [];
@@ -93,34 +95,6 @@ var Model = Ember.Object.extend(Ember.Evented, {
     @readOnly
   */
   isLoaded: retrieveFromCurrentState,
-  /**
-    If this property is `true` the record is in the `dirty` state. The
-    record has local changes that have not yet been saved by the
-    adapter. This includes records that have been created (but not yet
-    saved) or deleted.
-
-    Example
-
-    ```javascript
-    var record = store.createRecord('model');
-    record.get('isDirty'); // true
-
-    store.find('model', 1).then(function(model) {
-      model.get('isDirty'); // false
-      model.set('foo', 'some value');
-      model.get('isDirty'); // true
-    });
-    ```
-
-    @property isDirty
-    @type {Boolean}
-    @readOnly
-    @deprecated
-  */
-  isDirty: Ember.computed('currentState.isDirty', function() {
-    Ember.deprecate('DS.Model#isDirty has been deprecated please use hasDirtyAttributes instead');
-    return this.get('currentState.isDirty');
-  }),
   /**
     If this property is `true` the record is in the `dirty` state. The
     record has local changes that have not yet been saved by the
@@ -394,6 +368,15 @@ var Model = Ember.Object.extend(Ember.Evented, {
   }).readOnly(),
 
   /**
+    This property holds the `DS.AdapterError` object with which
+    last adapter operation was rejected.
+
+    @property adapterError
+    @type {DS.AdapterError}
+  */
+  adapterError: null,
+
+  /**
     Create a JSON representation of the record, using the serialization
     strategy of the store's adapter.
 
@@ -630,7 +613,9 @@ var Model = Ember.Object.extend(Ember.Evented, {
   */
   changedAttributes: function() {
     var oldData = get(this._internalModel, '_data');
-    var newData = get(this._internalModel, '_attributes');
+    var currentData = get(this._internalModel, '_attributes');
+    var inFlightData = get(this._internalModel, '_inFlightAttributes');
+    var newData = merge(copy(inFlightData), currentData);
     var diffData = Object.create(null);
 
     var newDataKeys = Object.keys(newData);
@@ -660,28 +645,6 @@ var Model = Ember.Object.extend(Ember.Evented, {
     this.updateRecordArraysLater();
   },
   */
-
-  /**
-    If the model `isDirty` this function will discard any unsaved
-    changes. If the model `isNew` it will be removed from the store.
-
-    Example
-
-    ```javascript
-    record.get('name'); // 'Untitled Document'
-    record.set('name', 'Doc 1');
-    record.get('name'); // 'Doc 1'
-    record.rollback();
-    record.get('name'); // 'Untitled Document'
-    ```
-
-    @method rollback
-    @deprecated Use `rollbackAttributes()` instead
-  */
-  rollback: function() {
-    Ember.deprecate('Using model.rollback() has been deprecated. Use model.rollbackAttributes() to discard any unsaved changes to a model.');
-    this.rollbackAttributes();
-  },
 
   /**
     If the model `isDirty` this function will discard any unsaved
@@ -807,7 +770,7 @@ var Model = Ember.Object.extend(Ember.Evented, {
   // rely on the data property.
   willMergeMixin: function(props) {
     var constructor = this.constructor;
-    Ember.assert('`' + intersection(Ember.keys(props), RESERVED_MODEL_PROPS)[0] + '` is a reserved property name on DS.Model objects. Please choose a different property name for ' + constructor.toString(), !intersection(Ember.keys(props), RESERVED_MODEL_PROPS)[0]);
+    Ember.assert('`' + intersection(Object.keys(props), RESERVED_MODEL_PROPS)[0] + '` is a reserved property name on DS.Model objects. Please choose a different property name for ' + constructor.toString(), !intersection(Object.keys(props), RESERVED_MODEL_PROPS)[0]);
   },
 
   attr: function() {
@@ -872,7 +835,7 @@ Model.reopenClass({
      }
    });
    ```
-   @property
+   @property modelName
    @type String
    @readonly
   */

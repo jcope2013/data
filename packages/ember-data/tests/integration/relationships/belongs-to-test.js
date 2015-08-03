@@ -105,7 +105,7 @@ test("The store can materialize a non loaded monomorphic belongsTo association",
       inverse: 'messages'
     })
   });
-
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   env.adapter.findRecord = function(store, type, id, snapshot) {
     ok(true, "The adapter's find method should be called");
     return Ember.RSVP.resolve({
@@ -114,9 +114,19 @@ test("The store can materialize a non loaded monomorphic belongsTo association",
   };
 
   run(function() {
-    env.store.push('post', {
-      id: 1,
-      user: 2
+    env.store.push({
+      data: {
+        id: '1',
+        type: 'post',
+        relationships: {
+          user: {
+            data: {
+              id: '2',
+              type: 'user'
+            }
+          }
+        }
+      }
     });
   });
 
@@ -129,11 +139,22 @@ test("The store can materialize a non loaded monomorphic belongsTo association",
 
 test("Only a record of the same type can be used with a monomorphic belongsTo relationship", function() {
   expect(1);
-
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    store.push('post', { id: 1 });
-    store.push('comment', { id: 2 });
+    store.push({
+      data: {
+        id: '1',
+        type: 'post'
+      }
+    });
+    store.push({
+      data: {
+        id: '2',
+        type: 'comment'
+      }
+    });
   });
+
 
   run(function() {
     hash({
@@ -148,12 +169,32 @@ test("Only a record of the same type can be used with a monomorphic belongsTo re
 });
 
 test("Only a record of the same base type can be used with a polymorphic belongsTo relationship", function() {
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   expect(1);
   run(function() {
-    store.push('comment', { id: 1 });
-    store.push('comment', { id: 2 });
-    store.push('post', { id: 1 });
-    store.push('user', { id: 3 });
+    store.push({
+      data: [{
+        id: '1',
+        type: 'comment'
+      },
+      {
+        id: '2',
+        type: 'comment'
+      }]
+    });
+    store.push({
+      data: {
+        id: '1',
+        type: 'post'
+      }
+    });
+    store.push({
+      data: {
+        id: '3',
+        type: 'user'
+      }
+    });
+
   });
 
   run(function() {
@@ -179,9 +220,29 @@ test("Only a record of the same base type can be used with a polymorphic belongs
 });
 
 test("The store can load a polymorphic belongsTo association", function() {
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    env.store.push('post', { id: 1 });
-    env.store.push('comment', { id: 2, message: 1, messageType: 'post' });
+    env.store.push({
+      data: {
+        id: '1',
+        type: 'post'
+      }
+    });
+
+    env.store.push({
+      data: {
+        id: '2',
+        type: 'comment',
+        relationships: {
+          message: {
+            data: {
+              id: '1',
+              type: 'post'
+            }
+          }
+        }
+      }
+    });
   });
 
   run(function() {
@@ -195,6 +256,7 @@ test("The store can load a polymorphic belongsTo association", function() {
 });
 
 test("The store can serialize a polymorphic belongsTo association", function() {
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   var serializerInstance = store.serializerFor('comment');
 
   serializerInstance.serializePolymorphicType = function(record, json, relationship) {
@@ -202,8 +264,26 @@ test("The store can serialize a polymorphic belongsTo association", function() {
     json["message_type"] = "post";
   };
   run(function() {
-    env.store.push('post', { id: 1 });
-    env.store.push('comment', { id: 2, message: 1, messageType: 'post' });
+    env.store.push({
+      data: {
+        id: '1',
+        type: 'post'
+      }
+    });
+    env.store.push({
+      data: {
+        id: '2',
+        type: 'comment',
+        relationships: {
+          message: {
+            data: {
+              id: '1',
+              type: 'post'
+            }
+          }
+        }
+      }
+    });
 
     store.findRecord('comment', 2).then(function(comment) {
       var serialized = store.serialize(comment, { includeId: true });
@@ -214,6 +294,7 @@ test("The store can serialize a polymorphic belongsTo association", function() {
 });
 
 test("A serializer can materialize a belongsTo as a link that gets sent back to findBelongsTo", function() {
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   var Group = DS.Model.extend({
     people: DS.hasMany('person', { async: false })
   });
@@ -226,7 +307,19 @@ test("A serializer can materialize a belongsTo as a link that gets sent back to 
   env.registry.register('model:person', Person);
 
   run(function() {
-    store.push('person', { id: 1, links: { group: '/people/1/group' } });
+    store.push({
+      data: {
+        id: '1',
+        type: 'person',
+        relationships: {
+          group: {
+            links: {
+              related: '/people/1/group'
+            }
+          }
+        }
+      }
+    });
   });
 
   env.adapter.findRecord = function(store, type, id, snapshot) {
@@ -252,6 +345,7 @@ test("A serializer can materialize a belongsTo as a link that gets sent back to 
 });
 
 test('A record with an async belongsTo relationship always returns a promise for that relationship', function () {
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   var Seat = DS.Model.extend({
     person: DS.belongsTo('person', { async: false })
   });
@@ -264,7 +358,19 @@ test('A record with an async belongsTo relationship always returns a promise for
   env.registry.register('model:person', Person);
 
   run(function() {
-    store.push('person', { id: 1, links: { seat: '/people/1/seat' } });
+    store.push({
+      data: {
+        id: '1',
+        type: 'person',
+        relationships: {
+          seat: {
+            links: {
+              related: '/people/1/seat'
+            }
+          }
+        }
+      }
+    });
   });
 
   env.adapter.findRecord = function(store, type, id, snapshot) {
@@ -290,6 +396,7 @@ test('A record with an async belongsTo relationship always returns a promise for
 test("A record with an async belongsTo relationship returning null should resolve null", function() {
   expect(1);
 
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   var Group = DS.Model.extend({
     people: DS.hasMany('person', { async: false })
   });
@@ -302,7 +409,19 @@ test("A record with an async belongsTo relationship returning null should resolv
   env.registry.register('model:person', Person);
 
   run(function() {
-    store.push('person', { id: 1, links: { group: '/people/1/group' } });
+    store.push({
+      data: {
+        id: '1',
+        type: 'person',
+        relationships: {
+          group: {
+            links: {
+              related: '/people/1/group'
+            }
+          }
+        }
+      }
+    });
   });
 
   env.adapter.findRecord = function(store, type, id, snapshot) {
@@ -313,7 +432,7 @@ test("A record with an async belongsTo relationship returning null should resolv
     return Ember.RSVP.resolve(null);
   });
 
-  env.store.findRecord('person', 1).then(async(function(person) {
+  env.store.findRecord('person', '1').then(async(function(person) {
     return person.get('group');
   })).then(async(function(group) {
     ok(group === null, "group should be null");
@@ -323,6 +442,7 @@ test("A record with an async belongsTo relationship returning null should resolv
 test("A record can be created with a resolved belongsTo promise", function() {
   expect(1);
 
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   var Group = DS.Model.extend({
     people: DS.hasMany('person', { async: false })
   });
@@ -336,7 +456,12 @@ test("A record can be created with a resolved belongsTo promise", function() {
 
   var group;
   run(function() {
-    group = store.push('group', { id: 1 });
+    group = store.push({
+      data: {
+        id: 1,
+        type: 'group'
+      }
+    });
   });
 
   var groupPromise = store.findRecord('group', 1);
@@ -503,14 +628,40 @@ test("relationship changes shouldn’t cause async fetches", function() {
   });
   var post, comment;
   run(function() {
-    post = env.store.push('post', {
-      id: 1,
-      comments: [1, 2, 3]
+    post = env.store.push({
+      data: {
+        id: '1',
+        type: 'post',
+        relationships: {
+          comments: {
+            data: [{
+              id: '1',
+              type: 'comment'
+            }, {
+              id: '2',
+              type: 'comment'
+            }, {
+              id: '3',
+              type: 'comment'
+            }]
+          }
+        }
+      }
     });
 
-    comment = env.store.push('comment', {
-      id:   1,
-      post: 1
+    comment = env.store.push({
+      data: {
+        id: '1',
+        type: 'comment',
+        relationships: {
+          post: {
+            data: {
+              id: '1',
+              type: 'post'
+            }
+          }
+        }
+      }
     });
   });
 
@@ -545,9 +696,19 @@ test("Destroying a record with an unloaded aync belongsTo association does not f
   });
 
   run(function() {
-    post = env.store.push('post', {
-      id: 1,
-      user: 2
+    post = env.store.push({
+      data: {
+        id: '1',
+        type: 'post',
+        relationships: {
+          user: {
+            data: {
+              id: '2',
+              type: 'user'
+            }
+          }
+        }
+      }
     });
   });
 
@@ -559,7 +720,7 @@ test("Destroying a record with an unloaded aync belongsTo association does not f
     ok(snapshot.record instanceof type);
     equal(snapshot.id, 1, 'should first post');
     return {
-      id: "1",
+      id: '1',
       title: null,
       created_at: null,
       user: "2"
@@ -572,7 +733,21 @@ test("Destroying a record with an unloaded aync belongsTo association does not f
 test("A sync belongsTo errors out if the record is unlaoded", function() {
   var message;
   run(function() {
-    message = env.store.push('message', { id: 1, user: 2 });
+    message = env.store.push({
+      data: {
+        id: '1',
+        type: 'message',
+        relationships: {
+          user: {
+            data: {
+              id: '2',
+              type: 'user'
+            }
+          }
+        }
+      }
+    });
+
   });
 
   expectAssertion(function() {
@@ -586,8 +761,33 @@ test("Rollbacking attributes for a deleted record restores implicit relationship
   });
   var book, author;
   run(function() {
-    book = env.store.push('book', { id: 1, name: "Stanley's Amazing Adventures", author: 2 });
-    author = env.store.push('author', { id: 2, name: 'Stanley' });
+    book = env.store.push({
+      data: {
+        id: '1',
+        type: 'book',
+        attributes: {
+          name: "Stanley's Amazing Adventures"
+        },
+        relationships: {
+          author: {
+            data: {
+              id: '2',
+              type: 'author'
+            }
+          }
+        }
+      }
+    });
+    author = env.store.push({
+      data: {
+        id: '2',
+        type: 'author',
+        attributes: {
+          name: 'Stanley'
+        }
+      }
+    });
+
   });
   run(function() {
     author.deleteRecord();
@@ -601,8 +801,33 @@ test("Rollbacking attributes for a deleted record restores implicit relationship
 test("Rollbacking attributes for a deleted record restores implicit relationship - sync", function () {
   var book, author;
   run(function() {
-    book = env.store.push('book', { id: 1, name: "Stanley's Amazing Adventures", author: 2 });
-    author = env.store.push('author', { id: 2, name: 'Stanley' });
+    book = env.store.push({
+      data: {
+        id: '1',
+        type: 'book',
+        attributes: {
+          name: "Stanley's Amazing Adventures"
+        },
+        relationships: {
+          author: {
+            data: {
+              id: '2',
+              type: 'author'
+            }
+          }
+        }
+      }
+    });
+    author = env.store.push({
+      data: {
+        id: '2',
+        type: 'author',
+        attributes: {
+          name: "Stanley"
+        }
+      }
+    });
+
   });
   run(function() {
     author.deleteRecord();
@@ -718,7 +943,13 @@ test("belongsTo hasData sync created", function () {
 test("Model's belongsTo relationship should not be created during model creation", function () {
   var user;
   run(function () {
-    user = env.store.push('user', { id: 1 });
+    user = env.store.push({
+      data: {
+        id: '1',
+        type: 'user'
+      }
+    });
+
     ok(!user._internalModel._relationships.has('favouriteMessage'), 'Newly created record should not have relationships');
   });
 });

@@ -30,35 +30,36 @@ test("record._createSnapshot() returns a snapshot", function() {
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     ok(snapshot instanceof DS.Snapshot, 'snapshot is an instance of DS.Snapshot');
   });
 });
 
-test("snapshot._createSnapshot() returns a snapshot (self) but is deprecated", function() {
-  expect(2);
-
-  run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var snapshot1 = post._createSnapshot();
-    var snapshot2;
-
-    expectDeprecation(function() {
-      snapshot2 = snapshot1._createSnapshot();
-    }, /You called _createSnapshot on what's already a DS.Snapshot. You shouldn't manually create snapshots in your adapter since the store passes snapshots to adapters by default./);
-
-    ok(snapshot2 === snapshot1, 'snapshot._createSnapshot() returns self');
-  });
-
-});
-
 test("snapshot.id, snapshot.type and snapshot.modelName returns correctly", function() {
   expect(3);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     equal(snapshot.id, '1', 'id is correct');
@@ -67,32 +68,20 @@ test("snapshot.id, snapshot.type and snapshot.modelName returns correctly", func
   });
 });
 
-if (Ember.platform.hasPropertyAccessors) {
-  test("snapshot.constructor is unique and deprecated", function() {
-    expect(4);
-
-    run(function() {
-      var comment = env.store.push('comment', { id: 1, body: 'This is comment' });
-      var post = env.store.push('post', { id: 2, title: 'Hello World' });
-      var commentSnapshot = comment._createSnapshot();
-      var postSnapshot = post._createSnapshot();
-
-      expectDeprecation(function() {
-        equal(commentSnapshot.constructor.modelName, 'comment', 'constructor.modelName is unique per type');
-      });
-
-      expectDeprecation(function() {
-        equal(postSnapshot.constructor.modelName, 'post', 'constructor.modelName is unique per type');
-      });
-    });
-  });
-}
-
 test("snapshot.attr() does not change when record changes", function() {
   expect(2);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     equal(snapshot.attr('title'), 'Hello World', 'snapshot title is correct');
@@ -105,7 +94,16 @@ test("snapshot.attr() throws an error attribute not found", function() {
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     throws(function() {
@@ -118,7 +116,16 @@ test("snapshot.attributes() returns a copy of all attributes for the current sna
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     var attributes = snapshot.attributes();
@@ -131,7 +138,16 @@ test("snapshot.changedAttributes() returns a copy of all changed attributes for 
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     post.set('title', 'Hello World!');
     var snapshot = post._createSnapshot();
 
@@ -145,7 +161,16 @@ test("snapshot.belongsTo() returns undefined if relationship is undefined", func
   expect(1);
 
   run(function() {
-    var comment = env.store.push('comment', { id: 1, body: 'This is comment' });
+    env.store.push({
+      data: {
+        type: 'comment',
+        id: '1',
+        attributes: {
+          body: 'This is comment'
+        }
+      }
+    });
+    var comment = env.store.peekRecord('comment', 1);
     var snapshot = comment._createSnapshot();
     var relationship = snapshot.belongsTo('post');
 
@@ -157,8 +182,27 @@ test("snapshot.belongsTo() returns null if relationship is unset", function() {
   expect(1);
 
   run(function() {
-    env.store.push('post', { id: 1, title: 'Hello World' });
-    var comment = env.store.push('comment', { id: 2, body: 'This is comment', post: null });
+    env.store.push({
+      data: [{
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        },
+        relationships: {
+          post: {
+            data: null
+          }
+        }
+      }]
+    });
+    var comment = env.store.peekRecord('comment', 2);
     var snapshot = comment._createSnapshot();
     var relationship = snapshot.belongsTo('post');
 
@@ -170,8 +214,27 @@ test("snapshot.belongsTo() returns a snapshot if relationship is set", function(
   expect(3);
 
   run(function() {
-    env.store.push('post', { id: 1, title: 'Hello World' });
-    var comment = env.store.push('comment', { id: 2, body: 'This is comment', post: 1 });
+    env.store.push({
+      data: [{
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        },
+        relationships: {
+          post: {
+            data: { type: 'post', id: '1' }
+          }
+        }
+      }]
+    });
+    var comment = env.store.peekRecord('comment', 2);
     var snapshot = comment._createSnapshot();
     var relationship = snapshot.belongsTo('post');
 
@@ -185,8 +248,28 @@ test("snapshot.belongsTo() returns null if relationship is deleted", function() 
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var comment = env.store.push('comment', { id: 2, body: 'This is comment', post: 1 });
+    env.store.push({
+      data: [{
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        },
+        relationships: {
+          post: {
+            data: { type: 'post', id: '1' }
+          }
+        }
+      }]
+    });
+    var post = env.store.peekRecord('post', 1);
+    var comment = env.store.peekRecord('comment', 2);
 
     post.deleteRecord();
 
@@ -201,7 +284,23 @@ test("snapshot.belongsTo() returns undefined if relationship is a link", functio
   expect(1);
 
   run(function() {
-    var comment = env.store.push('comment', { id: 2, body: 'This is comment', links: { post: 'post' } });
+    env.store.push({
+      data: {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        },
+        relationships: {
+          post: {
+            links: {
+              related: 'post'
+            }
+          }
+        }
+      }
+    });
+    var comment = env.store.peekRecord('comment', 2);
     var snapshot = comment._createSnapshot();
     var relationship = snapshot.belongsTo('post');
 
@@ -213,7 +312,16 @@ test("snapshot.belongsTo() throws error if relation doesn't exist", function() {
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     throws(function() {
@@ -230,7 +338,23 @@ test("snapshot.belongsTo() returns a snapshot if relationship link has been fetc
   };
 
   run(function() {
-    var comment = env.store.push('comment', { id: 2, body: 'This is comment', links: { post: 'post' } });
+    env.store.push({
+      data: {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        },
+        relationships: {
+          post: {
+            links: {
+              related: 'post'
+            }
+          }
+        }
+      }
+    });
+    var comment = env.store.peekRecord('comment', 2);
 
     comment.get('post').then(function(post) {
       var snapshot = comment._createSnapshot();
@@ -246,8 +370,23 @@ test("snapshot.belongsTo() and snapshot.hasMany() returns correctly when adding 
   expect(4);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var comment = env.store.push('comment', { id: 2, body: 'blabla' });
+    env.store.push({
+      data: [{
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        }
+      }]
+    });
+    var post = env.store.peekRecord('post', 1);
+    var comment = env.store.peekRecord('comment', 2);
 
     post.get('comments').then(function(comments) {
       comments.addObject(comment);
@@ -271,8 +410,23 @@ test("snapshot.belongsTo() and snapshot.hasMany() returns correctly when setting
   expect(4);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var comment = env.store.push('comment', { id: 2, body: 'blabla' });
+    env.store.push({
+      data: [{
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        }
+      }]
+    });
+    var post = env.store.peekRecord('post', 1);
+    var comment = env.store.peekRecord('comment', 2);
 
     comment.set('post', post);
 
@@ -294,8 +448,27 @@ test("snapshot.belongsTo() returns ID if option.id is set", function() {
   expect(1);
 
   run(function() {
-    env.store.push('post', { id: 1, title: 'Hello World' });
-    var comment = env.store.push('comment', { id: 2, body: 'This is comment', post: 1 });
+    env.store.push({
+      data: [{
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        },
+        relationships: {
+          post: {
+            data: { type: 'post', id: '1' }
+          }
+        }
+      }]
+    });
+    var comment = env.store.peekRecord('comment', 2);
     var snapshot = comment._createSnapshot();
     var relationship = snapshot.belongsTo('post', { id: true });
 
@@ -307,8 +480,28 @@ test("snapshot.belongsTo() returns null if option.id is set but relationship was
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var comment = env.store.push('comment', { id: 2, body: 'This is comment', post: 1 });
+    env.store.push({
+      data: [{
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is comment'
+        },
+        relationships: {
+          post: {
+            data: { type: 'post', id: '1' }
+          }
+        }
+      }]
+    });
+    var post = env.store.peekRecord('post', 1);
+    var comment = env.store.peekRecord('comment', 2);
 
     post.deleteRecord();
 
@@ -323,7 +516,16 @@ test("snapshot.hasMany() returns undefined if relationship is undefined", functi
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
     var relationship = snapshot.hasMany('comments');
 
@@ -331,11 +533,25 @@ test("snapshot.hasMany() returns undefined if relationship is undefined", functi
   });
 });
 
-test("snapshot.hasMany() returns empty array if relationship is unset", function() {
+test("snapshot.hasMany() returns empty array if relationship is empty", function() {
   expect(2);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World', comments: null });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            data: []
+          }
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
     var relationship = snapshot.hasMany('comments');
 
@@ -348,9 +564,36 @@ test("snapshot.hasMany() returns array of snapshots if relationship is set", fun
   expect(5);
 
   run(function() {
-    env.store.push('comment', { id: 1, body: 'This is the first comment' });
-    env.store.push('comment', { id: 2, body: 'This is the second comment' });
-    var post = env.store.push('post', { id: 3, title: 'Hello World', comments: [1, 2] });
+    env.store.push({
+      data: [{
+        type: 'comment',
+        id: '1',
+        attributes: {
+          body: 'This is the first comment'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is the second comment'
+        }
+      }, {
+        type: 'post',
+        id: '3',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' }
+            ]
+          }
+        }
+      }]
+    });
+    var post = env.store.peekRecord('post', 3);
     var snapshot = post._createSnapshot();
     var relationship = snapshot.hasMany('comments');
 
@@ -370,9 +613,38 @@ test("snapshot.hasMany() returns empty array if relationship records are deleted
   expect(2);
 
   run(function() {
-    var comment1 = env.store.push('comment', { id: 1, body: 'This is the first comment' });
-    var comment2 = env.store.push('comment', { id: 2, body: 'This is the second comment' });
-    var post = env.store.push('post', { id: 3, title: 'Hello World', comments: [1, 2] });
+    env.store.push({
+      data: [{
+        type: 'comment',
+        id: '1',
+        attributes: {
+          body: 'This is the first comment'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is the second comment'
+        }
+      }, {
+        type: 'post',
+        id: '3',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' }
+            ]
+          }
+        }
+      }]
+    });
+    var comment1 = env.store.peekRecord('comment', 1);
+    var comment2 = env.store.peekRecord('comment', 2);
+    var post = env.store.peekRecord('post', 3);
 
     comment1.deleteRecord();
     comment2.deleteRecord();
@@ -389,7 +661,24 @@ test("snapshot.hasMany() returns array of IDs if option.ids is set", function() 
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World', comments: [2, 3] });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
     var relationship = snapshot.hasMany('comments', { ids: true });
 
@@ -401,9 +690,38 @@ test("snapshot.hasMany() returns empty array of IDs if option.ids is set but rel
   expect(2);
 
   run(function() {
-    var comment1 = env.store.push('comment', { id: 1, body: 'This is the first comment' });
-    var comment2 = env.store.push('comment', { id: 2, body: 'This is the second comment' });
-    var post = env.store.push('post', { id: 3, title: 'Hello World', comments: [1, 1] });
+    env.store.push({
+      data: [{
+        type: 'comment',
+        id: '1',
+        attributes: {
+          body: 'This is the first comment'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is the second comment'
+        }
+      }, {
+        type: 'post',
+        id: '3',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' }
+            ]
+          }
+        }
+      }]
+    });
+    var comment1 = env.store.peekRecord('comment', 1);
+    var comment2 = env.store.peekRecord('comment', 2);
+    var post = env.store.peekRecord('post', 3);
 
     comment1.deleteRecord();
     comment2.deleteRecord();
@@ -420,7 +738,23 @@ test("snapshot.hasMany() returns undefined if relationship is a link", function(
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World', links: { comments: 'comments' } });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            links: {
+              related: 'comments'
+            }
+          }
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
     var relationship = snapshot.hasMany('comments');
 
@@ -436,7 +770,23 @@ test("snapshot.hasMany() returns array of snapshots if relationship link has bee
   };
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World', links: { comments: 'comments' } });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            links: {
+              related: 'comments'
+            }
+          }
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
 
     post.get('comments').then(function(comments) {
       var snapshot = post._createSnapshot();
@@ -452,7 +802,16 @@ test("snapshot.hasMany() throws error if relation doesn't exist", function() {
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     throws(function() {
@@ -465,10 +824,44 @@ test("snapshot.hasMany() respects the order of items in the relationship", funct
   expect(3);
 
   run(function() {
-    env.store.push('comment', { id: 1, body: 'This is the first comment' });
-    env.store.push('comment', { id: 2, body: 'This is the second comment' });
-    var comment3 = env.store.push('comment', { id: 3, body: 'This is the third comment' });
-    var post = env.store.push('post', { id: 4, title: 'Hello World', comments: [1, 2, 3] });
+    env.store.push({
+      data: [{
+        type: 'comment',
+        id: '1',
+        attributes: {
+          body: 'This is the first comment'
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          body: 'This is the second comment'
+        }
+      }, {
+        type: 'comment',
+        id: '3',
+        attributes: {
+          body: 'This is the third comment'
+        }
+      }, {
+        type: 'post',
+        id: '4',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }]
+    });
+    var comment3 = env.store.peekRecord('comment', 3);
+    var post = env.store.peekRecord('post', 4);
 
     post.get('comments').removeObject(comment3);
     post.get('comments').insertAt(0, comment3);
@@ -486,7 +879,16 @@ test("snapshot.eachAttribute() proxies to record", function() {
   expect(1);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     var attributes = [];
@@ -509,8 +911,23 @@ test("snapshot.eachRelationship() proxies to record", function() {
   };
 
   run(function() {
-    var comment = env.store.push('comment', { id: 1, body: 'This is the first comment' });
-    var post = env.store.push('post', { id: 2, title: 'Hello World' });
+    env.store.push({
+      data: [{
+        type: 'comment',
+        id: '1',
+        attributes: {
+          body: 'This is the first comment'
+        }
+      }, {
+        type: 'post',
+        id: '2',
+        attributes: {
+          title: 'Hello World'
+        }
+      }]
+    });
+    var comment = env.store.peekRecord('comment', 1);
+    var post = env.store.peekRecord('post', 2);
     var snapshot;
 
     snapshot = comment._createSnapshot();
@@ -529,7 +946,21 @@ test("snapshot.belongsTo() does not trigger a call to store.scheduleFetch", func
   };
 
   run(function() {
-    var comment = env.store.push('comment', { id: 2, body: 'This is comment', post: 1 });
+    env.store.push({
+      data: {
+        type: 'comment',
+        id: '1',
+        attributes: {
+          body: 'This is the first comment'
+        },
+        relationships: {
+          post: {
+            data: { type: 'post', id: '2' }
+          }
+        }
+      }
+    });
+    var comment = env.store.peekRecord('comment', 1);
     var snapshot = comment._createSnapshot();
 
     snapshot.belongsTo('post');
@@ -544,98 +975,27 @@ test("snapshot.hasMany() does not trigger a call to store.scheduleFetch", functi
   };
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World', comments: [2, 3] });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     snapshot.hasMany('comments');
-  });
-});
-
-test("snapshot.get() is deprecated", function() {
-  expect(1);
-
-  run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var snapshot = post._createSnapshot();
-
-    expectDeprecation(function() {
-      snapshot.get('title');
-    }, 'Using DS.Snapshot.get() is deprecated. Use .attr(), .belongsTo() or .hasMany() instead.');
-  });
-});
-
-test("snapshot.get() returns id", function() {
-  expect(2);
-
-  run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var snapshot = post._createSnapshot();
-
-    expectDeprecation(function() {
-      equal(snapshot.get('id'), '1', 'snapshot id is correct');
-    });
-  });
-});
-
-test("snapshot.get() returns attribute", function() {
-  expect(2);
-
-  run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var snapshot = post._createSnapshot();
-
-    expectDeprecation(function() {
-      equal(snapshot.get('title'), 'Hello World', 'snapshot title is correct');
-    });
-  });
-});
-
-test("snapshot.get() returns belongsTo", function() {
-  expect(3);
-
-  run(function() {
-    var comment = env.store.push('comment', { id: 1, body: 'This is a comment', post: 2 });
-    var snapshot = comment._createSnapshot();
-    var relationship;
-
-    expectDeprecation(function() {
-      relationship = snapshot.get('post');
-    });
-
-    ok(relationship instanceof DS.Snapshot, 'relationship is an instance of DS.Snapshot');
-    equal(relationship.id, '2', 'relationship id is correct');
-  });
-});
-
-test("snapshot.get() returns hasMany", function() {
-  expect(3);
-
-  run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World', comments: [2, 3] });
-    var snapshot = post._createSnapshot();
-    var relationship;
-
-    expectDeprecation(function() {
-      relationship = snapshot.get('comments');
-    });
-
-    ok(relationship instanceof Array, 'relationship is an instance of Array');
-    equal(relationship.length, 2, 'relationship has two items');
-  });
-});
-
-test("snapshot.get() proxies property to record unless identified as id, attribute or relationship", function() {
-  expect(2);
-
-  run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
-    var snapshot = post._createSnapshot();
-
-    post.set('category', 'Ember.js'); // category is not defined as an DS.attr()
-
-    expectDeprecation(function() {
-      equal(snapshot.get('category'), 'Ember.js', 'snapshot proxies unknown property correctly');
-    });
   });
 });
 
@@ -643,7 +1003,16 @@ test("snapshot.serialize() serializes itself", function() {
   expect(2);
 
   run(function() {
-    var post = env.store.push('post', { id: 1, title: 'Hello World' });
+    env.store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Hello World'
+        }
+      }
+    });
+    var post = env.store.peekRecord('post', 1);
     var snapshot = post._createSnapshot();
 
     post.set('title', 'New Title');
@@ -652,19 +1021,3 @@ test("snapshot.serialize() serializes itself", function() {
     deepEqual(snapshot.serialize({ includeId: true }), { id: "1", author: undefined, title: 'Hello World' }, 'serialize takes options');
   });
 });
-
-if (Ember.platform.hasPropertyAccessors) {
-  test('snapshot.typeKey is deprecated', function() {
-    expect(1);
-
-    run(function() {
-      var post = env.store.push('post', { id: 1, title: 'Hello World' });
-      var snapshot = post._createSnapshot();
-
-      expectDeprecation(function() {
-        return snapshot.typeKey;
-      });
-    });
-
-  });
-}

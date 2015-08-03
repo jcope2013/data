@@ -204,7 +204,7 @@ test('find many records', function() {
   }]);
 
   run(function() {
-    store.find('post', { filter: { id: 1 } }).then(function(posts) {
+    store.query('post', { filter: { id: 1 } }).then(function(posts) {
       equal(passedUrl[0], '/posts');
       deepEqual(passedHash[0], { data: { filter: { id: 1 } } });
 
@@ -872,6 +872,40 @@ test('update record - serialize hasMany', function() {
         });
       });
 
+    });
+  });
+});
+
+test('fetching a belongsTo relationship link that returns null', function() {
+  expect(3);
+
+  ajaxResponse([{
+    data: {
+      type: 'post',
+      id: '1',
+      attributes: {
+        title: 'Ember.js rocks'
+      },
+      relationships: {
+        author: {
+          links: {
+            related: 'http://example.com/post/1/author'
+          }
+        }
+      }
+    }
+  }, {
+    data: null
+  }]);
+
+  run(function() {
+    store.find('post', 1).then(function(post) {
+      equal(passedUrl[0], '/posts/1');
+      return post.get('author');
+
+    }).then(function(author) {
+      equal(passedUrl[1], 'http://example.com/post/1/author');
+      equal(author, null);
     });
   });
 });

@@ -5,8 +5,7 @@ import {
 } from "ember-data/system/store/common";
 
 import {
-  normalizeResponseHelper,
-  pushPayload
+  normalizeResponseHelper
 } from "ember-data/system/store/serializer-response";
 
 import {
@@ -14,17 +13,10 @@ import {
 } from "ember-data/system/store/serializers";
 
 var Promise = Ember.RSVP.Promise;
-var get = Ember.get;
 
 export function _find(adapter, store, typeClass, id, internalModel, options) {
   var snapshot = internalModel.createSnapshot(options);
-  var promise;
-  if (!adapter.findRecord) {
-    Ember.deprecate('Adapter#find has been deprecated and renamed to `findRecord`.');
-    promise = adapter.find(store, typeClass, id, snapshot);
-  } else {
-    promise = adapter.findRecord(store, typeClass, id, snapshot);
-  }
+  var promise = adapter.findRecord(store, typeClass, id, snapshot);
   var serializer = serializerForAdapter(store, adapter, internalModel.type.modelName);
   var label = "DS: Handle Adapter#find of " + typeClass + " with id: " + id;
 
@@ -34,10 +26,9 @@ export function _find(adapter, store, typeClass, id, internalModel, options) {
   return promise.then(function(adapterPayload) {
     Ember.assert("You made a request for a " + typeClass.typeClassKey + " with id " + id + ", but the adapter's response did not have any data", adapterPayload);
     return store._adapterRun(function() {
-      var requestType = get(serializer, 'isNewSerializerAPI') ? 'findRecord' : 'find';
-      var payload = normalizeResponseHelper(serializer, store, typeClass, adapterPayload, id, requestType);
+      var payload = normalizeResponseHelper(serializer, store, typeClass, adapterPayload, id, 'findRecord');
       //TODO Optimize
-      var record = pushPayload(store, payload);
+      var record = store.push(payload);
       return record._internalModel;
     });
   }, function(error) {
@@ -68,7 +59,7 @@ export function _findMany(adapter, store, typeClass, ids, internalModels) {
     return store._adapterRun(function() {
       var payload = normalizeResponseHelper(serializer, store, typeClass, adapterPayload, null, 'findMany');
       //TODO Optimize, no need to materialize here
-      var records = pushPayload(store, payload);
+      var records = store.push(payload);
       return records.map((record) => record._internalModel);
     });
   }, null, "DS: Extract payload of " + typeClass);
@@ -89,11 +80,9 @@ export function _findHasMany(adapter, store, internalModel, link, relationship) 
     return store._adapterRun(function() {
       var payload = normalizeResponseHelper(serializer, store, typeClass, adapterPayload, null, 'findHasMany');
       //TODO Use a non record creating push
-      var records = pushPayload(store, payload);
+      var records = store.push(payload);
       var recordArray = records.map((record) => record._internalModel);
-      if (serializer.get('isNewSerializerAPI')) {
-        recordArray.meta = payload.meta;
-      }
+      recordArray.meta = payload.meta;
       return recordArray;
     });
   }, null, "DS: Extract payload of " + internalModel + " : hasMany " + relationship.type);
@@ -119,7 +108,7 @@ export function _findBelongsTo(adapter, store, internalModel, link, relationship
       }
 
       //TODO Optimize
-      var record = pushPayload(store, payload);
+      var record = store.push(payload);
       return record._internalModel;
     });
   }, null, "DS: Extract payload of " + internalModel + " : " + relationship.type);
@@ -140,7 +129,7 @@ export function _findAll(adapter, store, typeClass, sinceToken, options) {
     store._adapterRun(function() {
       var payload = normalizeResponseHelper(serializer, store, typeClass, adapterPayload, null, 'findAll');
       //TODO Optimize
-      pushPayload(store, payload);
+      store.push(payload);
     });
 
     store.didUpdateAll(typeClass);
@@ -150,14 +139,7 @@ export function _findAll(adapter, store, typeClass, sinceToken, options) {
 
 export function _query(adapter, store, typeClass, query, recordArray) {
   var modelName = typeClass.modelName;
-  var promise;
-
-  if (!adapter.query) {
-    Ember.deprecate('Adapter#findQuery has been deprecated and renamed to `query`.');
-    promise = adapter.findQuery(store, typeClass, query, recordArray);
-  } else {
-    promise = adapter.query(store, typeClass, query, recordArray);
-  }
+  var promise = adapter.query(store, typeClass, query, recordArray);
 
   var serializer = serializerForAdapter(store, adapter, modelName);
   var label = "DS: Handle Adapter#findQuery of " + typeClass;
@@ -168,10 +150,9 @@ export function _query(adapter, store, typeClass, query, recordArray) {
   return promise.then(function(adapterPayload) {
     var records;
     store._adapterRun(function() {
-      var requestType = get(serializer, 'isNewSerializerAPI') ? 'query' : 'findQuery';
-      var payload = normalizeResponseHelper(serializer, store, typeClass, adapterPayload, null, requestType);
+      var payload = normalizeResponseHelper(serializer, store, typeClass, adapterPayload, null, 'query');
       //TODO Optimize
-      records = pushPayload(store, payload);
+      records = store.push(payload);
     });
 
     recordArray.loadRecords(records);
@@ -194,7 +175,7 @@ export function _queryRecord(adapter, store, typeClass, query) {
     store._adapterRun(function() {
       var payload = normalizeResponseHelper(serializer, store, typeClass, adapterPayload, null, 'queryRecord');
       //TODO Optimize
-      record = pushPayload(store, payload);
+      record = store.push(payload);
     });
 
     return record;

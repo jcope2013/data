@@ -14,7 +14,28 @@ test("updating the content of a RecordArray updates its content", function() {
   var records, tags, internalModel;
 
   run(function() {
-    records = store.pushMany('tag', [{ id: 5, name: "friendly" }, { id: 2, name: "smarmy" }, { id: 12, name: "oohlala" }]);
+    store.push({
+      data: [{
+        type: 'tag',
+        id: '5',
+        attributes: {
+          name: 'friendly'
+        }
+      }, {
+        type: 'tag',
+        id: '2',
+        attributes: {
+          name: 'smarmy'
+        }
+      }, {
+        type: 'tag',
+        id: '12',
+        attributes: {
+          name: 'oohlala'
+        }
+      }]
+    });
+    records = store.peekAll('tag');
     internalModel = Ember.A(records).mapBy('_internalModel');
     tags = DS.RecordArray.create({ content: Ember.A(internalModel.slice(0, 2)), store: store, type: Tag });
   });
@@ -45,9 +66,18 @@ test("can create child record from a hasMany relationship", function() {
 
   var env = setupStore({ tag: Tag, person: Person });
   var store = env.store;
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.push('person', { id: 1, name: "Tom Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: "Tom Dale"
+        }
+      }
+    });
   });
 
   run(function() {

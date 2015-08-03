@@ -174,7 +174,12 @@ test('buildURL - buildURL takes a record from find', function() {
 
   var post;
   run(function() {
-    post = store.push('post', { id: 2 });
+    post = store.push({
+      data: {
+        type: 'post',
+        id: '2'
+      }
+    });
   });
 
   run(function() {
@@ -200,7 +205,21 @@ test('buildURL - buildURL takes the records from findMany', function() {
   var post;
 
   run(function() {
-    post = store.push('post', { id: 2, comments: [1,2,3] });
+    post = store.push({
+      data: {
+        type: 'post',
+        id: '2',
+        relationships: {
+          comments: {
+            data: [
+              { id: '1', type: 'comment' },
+              { id: '2', type: 'comment' },
+              { id: '3', type: 'comment' }
+            ]
+          }
+        }
+      }
+    });
     post.get('comments').then(async(function(post) {
       equal(passedUrl, "/posts/2/comments/");
     }));
@@ -216,7 +235,12 @@ test('buildURL - buildURL takes a record from create', function() {
   ajaxResponse({ comments: [{ id: 1 }] });
 
   run(function() {
-    var post = store.push('post', { id: 2 });
+    var post = store.push({
+      data: {
+        type: 'post',
+        id: '2'
+      }
+    });
     var comment = store.createRecord('comment');
     comment.set('post', post);
     comment.save().then(async(function(post) {
@@ -260,8 +284,18 @@ test('buildURL - buildURL takes a record from update', function() {
 
   var post, comment;
   run(function() {
-    post = store.push('post', { id: 2 });
-    comment = store.push('comment', { id: 1 });
+    post = store.push({
+      data: {
+        type: 'post',
+        id: '2'
+      }
+    });
+    comment = store.push({
+      data: {
+        type: 'comment',
+        id: '1'
+      }
+    });
     comment.set('post', post);
   });
   run(function() {
@@ -282,8 +316,18 @@ test('buildURL - buildURL takes a record from delete', function() {
 
   var post, comment;
   run(function() {
-    post = store.push('post', { id: 2 });
-    comment = store.push('comment', { id: 1 });
+    post = store.push({
+      data: {
+        type: 'post',
+        id: '2'
+      }
+    });
+    comment = store.push({
+      data: {
+        type: 'comment',
+        id: '1'
+      }
+    });
 
     comment.set('post', post);
     comment.deleteRecord();
@@ -307,34 +351,4 @@ test('buildURL - with absolute namespace', function() {
   run(store, 'findRecord', 'post', 1).then(async(function(post) {
     equal(passedUrl, "/api/v1/posts/1");
   }));
-});
-
-
-test('buildURL - urlForFindRecord calls deprecated urlForFind', function() {
-  expect(2);
-
-  var adapter = DS.RESTAdapter.extend({
-    urlForFind: function() {
-      ok(true, 'urlForFind should be called');
-    }
-  }).create();
-
-  expectDeprecation(function() {
-    adapter.buildURL('post', 1, {}, 'findRecord');
-  }, /urlForFindRecord/);
-});
-
-
-test('buildURL - urlForQuery calls deprecated urlForFindQuery', function() {
-  expect(2);
-
-  var adapter = DS.RESTAdapter.extend({
-    urlForFindQuery: function() {
-      ok(true, 'urlForFindQuery should be called');
-    }
-  }).create();
-
-  expectDeprecation(function() {
-    adapter.buildURL('post', 1, {}, 'query');
-  }, /urlForQuery/);
 });

@@ -38,7 +38,7 @@ module("unit/store/push - DS.Store#push", {
 
     store = env.store;
 
-    env.registry.register('serializer:post', DS.ActiveModelSerializer);
+    env.registry.register('serializer:post', DS.RESTSerializer);
   },
 
   teardown: function() {
@@ -50,19 +50,25 @@ module("unit/store/push - DS.Store#push", {
 
 test("Calling push with a normalized hash returns a record", function() {
   expect(2);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    var person = store.push('person', {
-      id: 'wat',
-      firstName: "Yehuda",
-      lastName: "Katz"
+    var person = store.push({
+      data: {
+        type: 'person',
+        id: 'wat',
+        attributes: {
+          firstName: 'Yehuda',
+          lastName: 'Katz'
+        }
+      }
     });
     store.findRecord('person', 'wat').then(function(foundPerson) {
       equal(foundPerson, person, "record returned via load() is the same as the record returned from findRecord()");
       deepEqual(foundPerson.getProperties('id', 'firstName', 'lastName'), {
         id: 'wat',
-        firstName: "Yehuda",
-        lastName: "Katz"
+        firstName: 'Yehuda',
+        lastName: 'Katz'
       });
     });
   });
@@ -70,22 +76,28 @@ test("Calling push with a normalized hash returns a record", function() {
 
 test("Supplying a model class for `push` is the same as supplying a string", function () {
   expect(1);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   var Programmer = Person.extend();
   env.registry.register('model:programmer', Programmer);
 
   run(function() {
-    store.push('programmer', {
-      id: 'wat',
-      firstName: "Yehuda",
-      lastName: "Katz"
+    store.push({
+      data: {
+        type: 'programmer',
+        id: 'wat',
+        attributes: {
+          firstName: 'Yehuda',
+          lastName: 'Katz'
+        }
+      }
     });
 
     store.findRecord('programmer', 'wat').then(function(foundProgrammer) {
       deepEqual(foundProgrammer.getProperties('id', 'firstName', 'lastName'), {
         id: 'wat',
-        firstName: "Yehuda",
-        lastName: "Katz"
+        firstName: 'Yehuda',
+        lastName: 'Katz'
       });
     });
   });
@@ -101,42 +113,51 @@ test("Calling push triggers `didLoad` even if the record hasn't been requested f
   });
 
   run(function() {
-    store.push('person', {
-      id: 'wat',
-      firstName: "Yehuda",
-      lastName: "Katz"
-    });
-  });
-});
-
-test("Calling update should be deprecated", function() {
-  expectDeprecation(function() {
-    run(function() {
-      store.update('person', { id: '1', firstName: 'Yehuda', lastName: 'Katz' });
+    store.push({
+      data: {
+        type: 'person',
+        id: 'wat',
+        attributes: {
+          firstName: 'Yehuda',
+          lastName: 'Katz'
+        }
+      }
     });
   });
 });
 
 test("Calling push with partial records updates just those attributes", function() {
   expect(2);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    var person = store.push('person', {
-      id: 'wat',
-      firstName: "Yehuda",
-      lastName: "Katz"
+    store.push({
+      data: {
+        type: 'person',
+        id: 'wat',
+        attributes: {
+          firstName: 'Yehuda',
+          lastName: 'Katz'
+        }
+      }
     });
+    var person = store.peekRecord('person', 'wat');
 
-    store.push('person', {
-      id: 'wat',
-      lastName: "Katz!"
+    store.push({
+      data: {
+        type: 'person',
+        id: 'wat',
+        attributes: {
+          lastName: "Katz!"
+        }
+      }
     });
 
     store.findRecord('person', 'wat').then(function(foundPerson) {
       equal(foundPerson, person, "record returned via load() is the same as the record returned from findRecord()");
       deepEqual(foundPerson.getProperties('id', 'firstName', 'lastName'), {
         id: 'wat',
-        firstName: "Yehuda",
+        firstName: 'Yehuda',
         lastName: "Katz!"
       });
     });
@@ -148,13 +169,18 @@ test("Calling push on normalize allows partial updates with raw JSON", function 
   var person;
 
   run(function() {
-    person = store.push('person', {
-      id: '1',
-      firstName: "Robert",
-      lastName: "Jackson"
+    person = store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          firstName: 'Robert',
+          lastName: 'Jackson'
+        }
+      }
     });
 
-    store.push('person', store.normalize('person', {
+    store.push(store.normalize('person', {
       id: '1',
       firstName: "Jacquie"
     }));
@@ -162,33 +188,6 @@ test("Calling push on normalize allows partial updates with raw JSON", function 
 
   equal(person.get('firstName'), "Jacquie", "you can push raw JSON into the store");
   equal(person.get('lastName'), "Jackson", "existing fields are untouched");
-});
-
-test("Calling push with a normalized hash containing related records returns a record", function() {
-  var number1, number2, person;
-  run(function() {
-    number1 = store.push('phone-number', {
-      id: 1,
-      number: '5551212',
-      person: 'wat'
-    });
-
-    number2 = store.push('phone-number', {
-      id: 2,
-      number: '5552121',
-      person: 'wat'
-    });
-
-    person = store.push('person', {
-      id: 'wat',
-      firstName: 'John',
-      lastName: 'Smith',
-      phoneNumbers: [number1, number2]
-    });
-  });
-
-
-  deepEqual(person.get('phoneNumbers').toArray(), [number1, number2], "phoneNumbers array is correct");
 });
 
 test("Calling push with a normalized hash containing IDs of related records returns a record", function() {
@@ -218,12 +217,12 @@ test("Calling push with a normalized hash containing IDs of related records retu
   var person;
 
   run(function() {
-    person = store.push('person', {
+    person = store.push(store.normalize('person', {
       id: 'wat',
       firstName: 'John',
       lastName: 'Smith',
       phoneNumbers: ["1", "2"]
-    });
+    }));
     person.get('phoneNumbers').then(function(phoneNumbers) {
       deepEqual(phoneNumbers.map(function(item) {
         return item.getProperties('id', 'number', 'person');
@@ -245,7 +244,7 @@ test("Calling pushPayload allows pushing raw JSON", function () {
     store.pushPayload('post', {
       posts: [{
         id: '1',
-        post_title: "Ember rocks"
+        postTitle: "Ember rocks"
       }]
     });
   });
@@ -258,7 +257,7 @@ test("Calling pushPayload allows pushing raw JSON", function () {
     store.pushPayload('post', {
       posts: [{
         id: '1',
-        post_title: "Ember rocks (updated)"
+        postTitle: "Ember rocks (updated)"
       }]
     });
   });
@@ -271,7 +270,7 @@ test("Calling pushPayload allows pushing singular payload properties", function 
     store.pushPayload('post', {
       post: {
         id: '1',
-        post_title: "Ember rocks"
+        postTitle: "Ember rocks"
       }
     });
   });
@@ -284,7 +283,7 @@ test("Calling pushPayload allows pushing singular payload properties", function 
     store.pushPayload('post', {
       post: {
         id: '1',
-        post_title: "Ember rocks (updated)"
+        postTitle: "Ember rocks (updated)"
       }
     });
   });
@@ -446,14 +445,28 @@ test('Calling push with a link for a non async relationship should warn', functi
 
   warns(function() {
     run(function() {
-      store.push('person', {
+      store.push(store.normalize('person', {
         id: '1',
         links: {
           phoneNumbers: '/api/people/1/phone-numbers'
         }
-      });
+      }));
     });
   }, /You have pushed a record of type 'person' with 'phoneNumbers' as a link, but the association is not an async relationship./);
+});
+
+test('Calling push with an unknown model name throws an assertion error', function() {
+
+  expectAssertion(function() {
+    run(function() {
+      store.push({
+        data: {
+          id: '1',
+          type: 'unknown'
+        }
+      });
+    });
+  }, /You tried to push data with a type 'unknown' but no model could be found with that name/);
 });
 
 test('Calling push with a link containing an object throws an assertion error', function() {
@@ -463,27 +476,27 @@ test('Calling push with a link containing an object throws an assertion error', 
 
   expectAssertion(function() {
     run(function() {
-      store.push('person', {
+      store.push(store.normalize('person', {
         id: '1',
         links: {
           phoneNumbers: {
             href: '/api/people/1/phone-numbers'
           }
         }
-      });
+      }));
     });
   }, "You have pushed a record of type 'person' with 'phoneNumbers' as a link, but the value of that link is not a string.");
 });
 
 test('Calling push with a link containing the value null', function() {
   run(function() {
-    store.push('person', {
+    store.push(store.normalize('person', {
       id: '1',
       firstName: 'Tan',
       links: {
         phoneNumbers: null
       }
-    });
+    }));
   });
 
   var person = store.peekRecord('person', 1);
@@ -505,7 +518,17 @@ test('calling push with hasMany relationship the value must be an array', functi
   invalidValues.forEach(function(invalidValue) {
     throws(function() {
       run(function() {
-        store.push('person', { id: 1, phoneNumbers: invalidValue });
+        store.push({
+          data: {
+            type: 'person',
+            id: '1',
+            relationships: {
+              phoneNumbers: {
+                data: invalidValue
+              }
+            }
+          }
+        });
       });
     }, /must be an array/);
   });
@@ -523,33 +546,30 @@ test('calling push with missing or invalid `id` throws assertion error', functio
   invalidValues.forEach(function(invalidValue) {
     throws(function() {
       run(function() {
-        store.push('person', invalidValue);
+        store.push({
+          data: invalidValue
+        });
       });
-    }, /You must include an `id`/);
+    }, /You must include an 'id'/);
   });
 });
 
 test('calling push with belongsTo relationship the value must not be an array', function() {
   throws(function() {
     run(function() {
-      store.push('phone-number', { id: 1, person: [1] });
-    });
-  }, /must not be an array/);
-});
-
-test('calling push with an embedded relationship throws a useful error', function() {
-  throws(function() {
-    run(function() {
-      store.push('person', {
-        id: 1,
-        firstName: 'Ada',
-        lastName: 'Lovelace',
-        phoneNumbers: [
-          { number: '5551212', person: 1 }
-        ]
+      store.push({
+        data: {
+          type: 'phone-number',
+          id: '1',
+          relationships: {
+            person: {
+              data: [1]
+            }
+          }
+        }
       });
     });
-  }, /If this is an embedded relationship/);
+  }, /must not be an array/);
 });
 
 test("Enabling Ember.ENV.DS_WARN_ON_UNKNOWN_KEYS should warn on unknown keys", function() {
@@ -558,11 +578,16 @@ test("Enabling Ember.ENV.DS_WARN_ON_UNKNOWN_KEYS should warn on unknown keys", f
     try {
       Ember.ENV.DS_WARN_ON_UNKNOWN_KEYS = true;
       warns(function() {
-        store.push('person', {
-          id: '1',
-          firstName: 'Tomster',
-          emailAddress: 'tomster@emberjs.com',
-          isMascot: true
+        store.push({
+          data: {
+            type: 'person',
+            id: '1',
+            attributes: {
+              firstName: 'Tomster',
+              emailAddress: 'tomster@emberjs.com',
+              isMascot: true
+            }
+          }
         });
       });
     } finally {
@@ -574,40 +599,20 @@ test("Enabling Ember.ENV.DS_WARN_ON_UNKNOWN_KEYS should warn on unknown keys", f
 test("Calling push with unknown keys should not warn by default", function() {
   noWarns(function() {
     run(function() {
-      store.push('person', {
-        id: '1',
-        firstName: 'Tomster',
-        emailAddress: 'tomster@emberjs.com',
-        isMascot: true
+      store.push({
+        data: {
+          type: 'person',
+          id: '1',
+          attributes: {
+            firstName: 'Tomster',
+            emailAddress: 'tomster@emberjs.com',
+            isMascot: true
+          }
+        }
       });
     });
   }, /The payload for 'person' contains these unknown keys: \[emailAddress,isMascot\]. Make sure they've been defined in your model./);
 });
-
-test("Calling pushMany is deprecated", function() {
-  var person1, person2;
-  expectDeprecation(function() {
-    run(function() {
-      person1 = { id: 1, firstName: 'John', lastName: 'Smith' };
-      person2 = { id: 2, firstName: 'Suzie', lastName: 'Q' };
-
-      store.pushMany('person', [person1, person2]);
-    });
-  }, 'Using store.pushMany() has been deprecated since store.push() now handles multiple items. You should use store.push() instead.');
-});
-
-
-test("Calling push(type, data) is deprecated", function() {
-  var person1;
-  expectDeprecation(function() {
-    run(function() {
-      person1 = { id: 1, firstName: 'John', lastName: 'Smith' };
-
-      store.push('person', person1);
-    });
-  }, /store.push\(type, data\) has been deprecated/);
-});
-
 
 module("unit/store/push - DS.Store#push with JSON-API", {
   setup: function() {

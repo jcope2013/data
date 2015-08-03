@@ -1,7 +1,6 @@
 var run = Ember.run;
 var Application = Ember.Application;
 var Controller = Ember.Controller;
-var View = Ember.View;
 var Store = DS.Store;
 var Namespace = Ember.Namespace;
 
@@ -24,9 +23,8 @@ module("integration/application - Injecting a Custom Store", {
   setup: function() {
     run(function() {
       app = Application.create({
-        ApplicationStore: Store.extend({ isCustom: true }),
+        StoreService: Store.extend({ isCustom: true }),
         FooController: Controller.extend(),
-        ApplicationView: View.extend(),
         BazController: {},
         ApplicationController: Controller.extend(),
         rootElement: '#qunit-fixture'
@@ -54,27 +52,13 @@ test("If a store is instantiated, it should be made available to each controller
   ok(isCustom, "the custom store was injected");
 });
 
-test("registering App.Store is deprecated but functional", function() {
-  run(app, 'destroy');
-
-  expectDeprecation(function() {
-    run(function() {
-      app = Application.create({
-        Store: DS.Store.extend({ isCustomButDeprecated: true }),
-        FooController: Controller.extend()
-      });
-    });
-    container = app.__container__;
-  }, 'Specifying a custom Store for Ember Data on your global namespace as `App.Store` ' +
-     'has been deprecated. Please use `App.ApplicationStore` instead.');
-
+test("The JSONAPIAdapter is the default adapter when no custom adapter is provided", function() {
   run(function() {
-    ok(lookup('service:store').get('isCustomButDeprecated'), "the custom store was instantiated");
-  });
+    var store = getStore();
 
-  var fooController = lookup('controller:foo');
-  run(function() {
-    ok(fooController.get('store.isCustomButDeprecated'), "the custom store was injected");
+    var adapter = store.adapterFor('application');
+
+    ok(adapter instanceof DS.JSONAPIAdapter, 'default adapter should be the JSONAPIAdapter');
   });
 });
 
@@ -83,7 +67,6 @@ module("integration/application - Injecting the Default Store", {
     run(function() {
       app = Application.create({
         FooController: Controller.extend(),
-        ApplicationView: View.extend(),
         BazController: {},
         ApplicationController: Controller.extend()
       });
@@ -120,7 +103,7 @@ if (Ember.inject && Ember.inject.service) {
     setup: function() {
       run(function() {
         app = Application.create({
-          DoodleService: Ember.Object.extend({ store: Ember.inject.service() })
+          DoodleService: Ember.Service.extend({ store: Ember.inject.service() })
         });
       });
 
@@ -169,6 +152,30 @@ test("ember-data initializer is run", function() {
   ok(ran, 'ember-data initializer was found');
 });
 
+test("ember-data initializer does not register the store service when it was already registered", function() {
+
+  var AppStore = Store.extend({
+    isCustomStore: true
+  });
+
+  App.initializer({
+    name:       "after-ember-data",
+    before:      "ember-data",
+    initialize: function(registry) {
+      registry.register('service:store', AppStore);
+    }
+  });
+
+  run(function() {
+    app = App.create();
+    container = app.__container__;
+  });
+
+  var store = getStore();
+  ok(store && store.get('isCustomStore'), 'ember-data initializer does not overwrite the previous registered service store');
+
+});
+
 test("store initializer is run (DEPRECATED)", function() {
   var ran = false;
   App.initializer({
@@ -212,19 +219,4 @@ test("transforms initializer is run (DEPRECATED)", function() {
   });
 
   ok(ran, 'transforms initializer was found');
-});
-
-test("activeModelAdapter initializer is run (DEPRECATED)", function() {
-  var ran = false;
-  App.initializer({
-    name:       "after-store",
-    after:      'activeModelAdapter',
-    initialize: function() { ran = true; }
-  });
-
-  run(function() {
-    app = App.create();
-  });
-
-  ok(ran, 'activeModelAdapter initializer was found');
 });

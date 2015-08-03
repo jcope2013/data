@@ -244,7 +244,20 @@ test("create - findMany doesn't overwrite owner", function() {
   Comment.reopen({ post: DS.belongsTo('post', { async: false }) });
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase", comments: [] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            data: []
+          }
+        }
+      }
+    });
   });
   var post = store.peekRecord('post', 1);
 
@@ -409,8 +422,36 @@ test("create - a record on the many side of a hasMany relationship should update
   Comment.reopen({ post: DS.belongsTo('post', { async: false }) });
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase", comments: [1] });
-    store.push('comment', { id: 1, name: "Dat Parlay Letter", post: 1 });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' }
+            ]
+          }
+        }
+      }
+    });
+    store.push({
+      data: {
+        type: 'comment',
+        id: '1',
+        attributes: {
+          name: "Dat Parlay Letter"
+        },
+        relationships: {
+          post: {
+            data: { type: 'post', id: '1' }
+          }
+        }
+      }
+    });
   });
 
   var post = store.peekRecord('post', 1);
@@ -524,49 +565,78 @@ test("create - relationships are not duplicated", function() {
 
 test("update - an empty payload is a basic success", function() {
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  run(function() {
+    var post = store.peekRecord('post', 1);
     ajaxResponse();
 
     post.set('name', "The Parley Letter");
-    return post.save();
-  })).then(async(function(post) {
-    equal(passedUrl, "/posts/1");
-    equal(passedVerb, "PUT");
-    deepEqual(passedHash.data, { post: { name: "The Parley Letter" } });
+    post.save().then(async(function(post) {
+      equal(passedUrl, "/posts/1");
+      equal(passedVerb, "PUT");
+      deepEqual(passedHash.data, { post: { name: "The Parley Letter" } });
 
-    equal(post.get('hasDirtyAttributes'), false, "the post isn't dirty anymore");
-    equal(post.get('name'), "The Parley Letter", "the post was updated");
-  }));
+      equal(post.get('hasDirtyAttributes'), false, "the post isn't dirty anymore");
+      equal(post.get('name'), "The Parley Letter", "the post was updated");
+    }));
+  });
 });
 
 test("update - passes the requestType to buildURL", function() {
   adapter.buildURL = function(type, id, snapshot, requestType) {
     return "/posts/" + id + "/" + requestType;
   };
+  adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
-    ajaxResponse();
+  run(function() {
+    store.findRecord('post', 1).then(async(function(post) {
+      ajaxResponse();
 
-    post.set('name', "The Parley Letter");
-    return post.save();
-  })).then(async(function(post) {
-    equal(passedUrl, "/posts/1/updateRecord");
-  }));
+      post.set('name', "The Parley Letter");
+      return post.save();
+    })).then(async(function(post) {
+      equal(passedUrl, "/posts/1/updateRecord");
+    }));
+  });
 });
 
 test("update - a payload with updates applies the updates", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({ posts: [{ id: 1, name: "Dat Parley Letter" }] });
 
     post.set('name', "The Parley Letter");
@@ -582,11 +652,20 @@ test("update - a payload with updates applies the updates", function() {
 });
 
 test("update - a payload with updates applies the updates (with legacy singular name)", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({ post: { id: 1, name: "Dat Parley Letter" } });
 
     post.set('name', "The Parley Letter");
@@ -625,11 +704,20 @@ test("update - a payload with sideloaded updates pushes the updates", function()
 });
 
 test("update - a payload with sideloaded updates pushes the updates", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({
       posts: [{ id: 1, name: "Dat Parley Letter" }],
       comments: [{ id: 1, name: "FIRST" }]
@@ -651,6 +739,7 @@ test("update - a payload with sideloaded updates pushes the updates", function()
 });
 
 test("update - a serializer's primary key and attributes are consulted when building the payload", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   env.registry.register('serializer:post', DS.RESTSerializer.extend({
     primaryKey: '_id_',
 
@@ -660,11 +749,17 @@ test("update - a serializer's primary key and attributes are consulted when buil
   }));
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        name: "Rails is omakase"
+      }
+    });
   });
   ajaxResponse();
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     post.set('name', "The Parley Letter");
     return post.save();
   })).then(async(function(post) {
@@ -675,19 +770,46 @@ test("update - a serializer's primary key and attributes are consulted when buil
 test("update - hasMany relationships faithfully reflect simultaneous adds and removes", function() {
   Post.reopen({ comments: DS.hasMany('comment', { async: false }) });
   Comment.reopen({ post: DS.belongsTo('post', { async: false }) });
+  adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.push('post', { id: 1, name: "Not everyone uses Rails", comments: [1] });
-    store.push('comment', { id: 1, name: "Rails is omakase" });
-    store.push('comment', { id: 2, name: "Yes. Yes it is." });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Not everyone uses Rails"
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' }
+            ]
+          }
+        }
+      },
+      included: [{
+        type: 'comment',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }, {
+        type: 'comment',
+        id: '2',
+        attributes: {
+          name: "Yes. Yes it is."
+        }
+      }]
+    });
   });
 
   ajaxResponse({
     posts: { id: 1, name: "Not everyone uses Rails", comments: [2] }
   });
 
-  store.find('comment', 2).then(async(function() {
-    return store.find('post', 1);
+  store.findRecord('comment', 2).then(async(function() {
+    return store.findRecord('post', 1);
   })).then(async(function(post) {
     var newComment = store.peekRecord('comment', 2);
     var comments = post.get('comments');
@@ -704,11 +826,20 @@ test("update - hasMany relationships faithfully reflect simultaneous adds and re
 });
 
 test("delete - an empty payload is a basic success", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse();
 
     post.deleteRecord();
@@ -724,15 +855,24 @@ test("delete - an empty payload is a basic success", function() {
 });
 
 test("delete - passes the requestType to buildURL", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.buildURL = function(type, id, snapshot, requestType) {
     return "/posts/" + id + "/" + requestType;
   };
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse();
 
     post.deleteRecord();
@@ -743,11 +883,20 @@ test("delete - passes the requestType to buildURL", function() {
 });
 
 test("delete - a payload with sideloaded updates pushes the updates", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({ comments: [{ id: 1, name: "FIRST" }] });
 
     post.deleteRecord();
@@ -766,11 +915,20 @@ test("delete - a payload with sideloaded updates pushes the updates", function()
 });
 
 test("delete - a payload with sidloaded updates pushes the updates when the original record is omitted", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase" });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({ posts: [{ id: 2, name: "The Parley Letter" }] });
 
     post.deleteRecord();
@@ -912,40 +1070,6 @@ test("findAll - data is normalized through custom serializers", function() {
       posts.toArray(),
       [post1, post2],
       "The correct records are in the array"
-    );
-  }));
-});
-
-test("findAll - since token is passed to the adapter", function() {
-  ajaxResponse({
-    meta: { since: 'later' },
-    posts: [
-      { id: 1, name: "Rails is omakase" },
-      { id: 2, name: "The Parley Letter" }
-    ]
-  });
-
-  store.setMetadataFor('post', { since: 'now' });
-
-  store.findAll('post').then(async(function(posts) {
-    equal(passedUrl, '/posts');
-    equal(passedVerb, 'GET');
-    equal(store.typeMapFor(Post).metadata.since, 'later');
-    deepEqual(passedHash.data, { since: 'now' });
-  }));
-});
-
-test("metadata is accessible", function() {
-  ajaxResponse({
-    meta: { offset: 5 },
-    posts: [{ id: 1, name: "Rails is very expensive sushi" }]
-  });
-
-  store.findAll('post').then(async(function(posts) {
-    equal(
-      store.metadataFor('post').offset,
-      5,
-      "Metadata can be accessed with metadataFor."
     );
   }));
 });
@@ -1155,12 +1279,88 @@ test("findQuery - data is normalized through custom serializers", function() {
   }));
 });
 
+test("queryRecord - returns a single record in an object", function() {
+  ajaxResponse({
+    post: {
+      id: '1',
+      name: 'Ember.js rocks'
+    }
+  });
+
+  store.queryRecord('post', { slug: 'ember-js-rocks' }).then(async(function(post) {
+    deepEqual(post.get('name'), "Ember.js rocks");
+  }));
+});
+
+test("queryRecord - returning sideloaded data loads the data", function() {
+  ajaxResponse({
+    post: { id: 1, name: "Rails is omakase" },
+    comments: [{ id: 1, name: "FIRST" }]
+  });
+
+  store.queryRecord('post', { slug: 'rails-is-omakaze' }).then(async(function(post) {
+    var comment = store.peekRecord('comment', 1);
+
+    deepEqual(comment.getProperties('id', 'name'), { id: "1", name: "FIRST" });
+  }));
+});
+
+test("queryRecord - returning an array picks the first one but saves all records to the store", function() {
+  ajaxResponse({
+    post: [{ id: 1, name: "Rails is omakase" }, { id: 2, name: "Ember is js" }]
+  });
+
+  store.queryRecord('post', { slug: 'rails-is-omakaze' }).then(async(function(post) {
+    var post2 = store.peekRecord('post', 2);
+
+    deepEqual(post.getProperties('id', 'name'), { id: "1", name: "Rails is omakase" });
+    deepEqual(post2.getProperties('id', 'name'), { id: "2", name: "Ember is js" });
+  }));
+});
+
+test("queryRecord - data is normalized through custom serializers", function() {
+  env.registry.register('serializer:post', DS.RESTSerializer.extend({
+    primaryKey: '_ID_',
+    attrs: { name: '_NAME_' }
+  }));
+
+  ajaxResponse({
+    post: { _ID_: 1, _NAME_: "Rails is omakase" }
+  });
+
+  store.queryRecord('post', { slug: 'rails-is-omakaze' }).then(async(function(post) {
+
+    deepEqual(
+      post.getProperties('id', 'name'),
+      { id: "1", name: "Rails is omakase" },
+      "Post 1 is loaded with correct data"
+    );
+  }));
+});
+
 test("findMany - findMany uses a correct URL to access the records", function() {
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
   adapter.coalesceFindRequests = true;
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase", comments: [1, 2, 3] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
   });
 
   var post = store.peekRecord('post', 1);
@@ -1186,7 +1386,24 @@ test("findMany - passes buildURL the requestType", function() {
   adapter.coalesceFindRequests = true;
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase", comments: [1, 2, 3] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
   });
 
   var post = store.peekRecord('post', 1);
@@ -1206,7 +1423,24 @@ test("findMany - findMany does not coalesce by default", function() {
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase", comments: [1, 2, 3] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
   });
 
   var post = store.peekRecord('post', 1);
@@ -1225,14 +1459,32 @@ test("findMany - findMany does not coalesce by default", function() {
 });
 
 test("findMany - returning an array populates the array", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
   adapter.coalesceFindRequests = true;
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase", comments: [1, 2, 3] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({
       comments: [
         { id: 1, name: "FIRST" },
@@ -1260,14 +1512,32 @@ test("findMany - returning an array populates the array", function() {
 });
 
 test("findMany - returning sideloaded data loads the data", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
   adapter.coalesceFindRequests = true;
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase", comments: [1, 2, 3] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({
       comments: [
         { id: 1, name: "FIRST" },
@@ -1298,6 +1568,7 @@ test("findMany - returning sideloaded data loads the data", function() {
 });
 
 test("findMany - a custom serializer is used if present", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   env.registry.register('serializer:post', DS.RESTSerializer.extend({
     primaryKey: '_ID_',
     attrs: { name: '_NAME_' }
@@ -1312,10 +1583,27 @@ test("findMany - a custom serializer is used if present", function() {
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
 
   run(function() {
-    store.push('post', { id: 1, name: "Rails is omakase", comments: [1, 2, 3] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({
       comments: [
         { _ID_: 1, _NAME_: "FIRST" },
@@ -1338,20 +1626,29 @@ test("findMany - a custom serializer is used if present", function() {
 });
 
 test("findHasMany - returning an array populates the array", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
 
   run(function() {
-    store.push(
-      'post',
-      {
-        id: 1,
-        name: "Rails is omakase",
-        links: { comments: '/posts/1/comments' }
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            links: {
+              related: '/posts/1/comments'
+            }
+          }
+        }
       }
-    );
+    });
   });
 
-  run(store, 'find', 'post', '1').then(async(function(post) {
+  run(store, 'findRecord', 'post', '1').then(async(function(post) {
     ajaxResponse({
       comments: [
         { id: 1, name: "FIRST" },
@@ -1379,6 +1676,7 @@ test("findHasMany - returning an array populates the array", function() {
 });
 
 test("findHasMany - passes buildURL the requestType", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.buildURL = function(type, id, snapshot, requestType) {
     equal(requestType, 'findHasMany');
   };
@@ -1386,17 +1684,25 @@ test("findHasMany - passes buildURL the requestType", function() {
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
 
   run(function() {
-    store.push(
-      'post',
-      {
-        id: 1,
-        name: "Rails is omakase",
-        links: { comments: '/posts/1/comments' }
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            links: {
+              related: '/posts/1/comments'
+            }
+          }
+        }
       }
-    );
+    });
   });
 
-  run(store, 'find', 'post', '1').then(async(function(post) {
+  run(store, 'findRecord', 'post', '1').then(async(function(post) {
     ajaxResponse({
       comments: [
         { id: 1, name: "FIRST" },
@@ -1414,21 +1720,30 @@ test("findHasMany - passes buildURL the requestType", function() {
 
 
 test("findMany - returning sideloaded data loads the data", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
   adapter.coalesceFindRequests = true;
 
   run(function() {
-    store.push(
-      'post',
-      {
-        id: 1,
-        name: "Rails is omakase",
-        links: { comments: '/posts/1/comments' }
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            links: {
+              related: '/posts/1/comments'
+            }
+          }
+        }
       }
-    );
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({
       comments: [
         { id: 1, name: "FIRST" },
@@ -1452,6 +1767,7 @@ test("findMany - returning sideloaded data loads the data", function() {
 });
 
 test("findMany - a custom serializer is used if present", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   env.registry.register('serializer:post', DS.RESTSerializer.extend({
     primaryKey: '_ID_',
     attrs: { name: '_NAME_' }
@@ -1465,17 +1781,25 @@ test("findMany - a custom serializer is used if present", function() {
   Post.reopen({ comments: DS.hasMany('comment', { async: true }) });
 
   run(function() {
-    store.push(
-      'post',
-      {
-        id: 1,
-        name: "Rails is omakase",
-        links: { comments: '/posts/1/comments' }
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          name: "Rails is omakase"
+        },
+        relationships: {
+          comments: {
+            links: {
+              related: '/posts/1/comments'
+            }
+          }
+        }
       }
-    );
+    });
   });
 
-  store.find('post', 1).then(async(function(post) {
+  store.findRecord('post', 1).then(async(function(post) {
     ajaxResponse({
       comments: [
         { _ID_: 1, _NAME_: "FIRST" },
@@ -1498,6 +1822,7 @@ test("findMany - a custom serializer is used if present", function() {
 });
 
 test('findBelongsTo - passes buildURL the requestType', function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.buildURL = function(type, id, snapshot, requestType) {
     equal(requestType, 'findBelongsTo');
   };
@@ -1505,13 +1830,25 @@ test('findBelongsTo - passes buildURL the requestType', function() {
   Comment.reopen({ post: DS.belongsTo('post', { async: true }) });
 
   run(function() {
-    store.push('comment', {
-      id: 1, name: "FIRST",
-      links: { post: '/posts/1' }
+    store.push({
+      data: {
+        type: 'comment',
+        id: '1',
+        attributes: {
+          name: "FIRST"
+        },
+        relationships: {
+          post: {
+            links: {
+              related: '/posts/1'
+            }
+          }
+        }
+      }
     });
   });
 
-  run(store, 'find', 'comment', 1).then(async(function(comment) {
+  run(store, 'findRecord', 'comment', 1).then(async(function(comment) {
     ajaxResponse({ post: { id: 1, name: 'Rails is omakase' } });
     return comment.get('post');
   })).then(async(function(post) {
@@ -1530,7 +1867,23 @@ test('coalesceFindRequests warns if the expected records are not returned in the
 
   warns(function() {
     run(function() {
-      post = store.push('post', { id: 2, comments: [1,2,3] });
+      store.push({
+        data: {
+          type: 'post',
+          id: '2',
+          relationships: {
+            comments: {
+              data: [
+                { type: 'comment', id: '1' },
+                { type: 'comment', id: '2' },
+                { type: 'comment', id: '3' }
+              ]
+            }
+          }
+        }
+      });
+
+      post = store.peekRecord('post', 2);
       post.get('comments');
     });
   }, /expected to find records with the following ids in the adapter response but they were missing: \[2,3\]/);
@@ -1561,7 +1914,22 @@ test('groupRecordsForFindMany groups records based on their url', function() {
 
   var post;
   run(function() {
-    post = store.push('post', { id: 2, comments: [1,2,3] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '2',
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
+    post = store.peekRecord('post', 2);
   });
 
   run(function() {
@@ -1594,7 +1962,22 @@ test('groupRecordsForFindMany groups records correctly when singular URLs are en
   var post;
 
   run(function() {
-    post = store.push('post', { id: 2, comments: [1,2,3] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '2',
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: '1' },
+              { type: 'comment', id: '2' },
+              { type: 'comment', id: '3' }
+            ]
+          }
+        }
+      }
+    });
+    post = store.peekRecord('post', 2);
   });
 
   run(function() {
@@ -1684,7 +2067,21 @@ test('groupRecordsForFindMany splits up calls for large ids', function() {
   var b2000 = repeatChar('b', 2000);
   var post;
   run(function() {
-    post = store.push('post', { id: 1, comments: [a2000, b2000] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: a2000 },
+              { type: 'comment', id: b2000 }
+            ]
+          }
+        }
+      }
+    });
+    post = store.peekRecord('post', 1);
   });
 
   adapter.coalesceFindRequests = true;
@@ -1722,7 +2119,21 @@ test('groupRecordsForFindMany groups calls for small ids', function() {
   var post;
 
   run(function() {
-    post = store.push('post', { id: 1, comments: [a100, b100] });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        relationships: {
+          comments: {
+            data: [
+              { type: 'comment', id: a100 },
+              { type: 'comment', id: b100 }
+            ]
+          }
+        }
+      }
+    });
+    post = store.peekRecord('post', 1);
   });
 
   adapter.coalesceFindRequests = true;
@@ -1885,7 +2296,7 @@ test('on error wraps the error string in an DS.AdapterError object', function() 
   try {
     run(function() {
       store.find('post', '1').catch(function(err) {
-        equal(err.errors[0].details, errorThrown);
+        equal(err.errors[0].detail, errorThrown);
         ok(err, 'promise rejected');
       });
     });
@@ -1921,4 +2332,37 @@ test('findAll resolves with a collection of DS.Models, not DS.InternalModels', (
     }));
   });
 
+});
+
+test("create - sideloaded records are pushed to the store", function() {
+  Post.reopen({
+    comments: DS.hasMany('comment')
+  });
+
+  ajaxResponse({
+    post: {
+      id: 1,
+      name: 'The Parley Letter',
+      comments: [2, 3]
+    },
+    comments: [{
+      id: 2,
+      name: 'First comment'
+    }, {
+      id: 3,
+      name: 'Second comment'
+    }]
+  });
+  var post;
+
+  run(function() {
+    post = store.createRecord('post', { name: 'The Parley Letter' });
+    post.save().then(function(post) {
+      var comments = store.peekAll('comment');
+
+      equal(get(comments, 'length'), 2, 'comments.length is correct');
+      equal(get(comments, 'firstObject.name'), 'First comment', 'comments.firstObject.name is correct');
+      equal(get(comments, 'lastObject.name'), 'Second comment', 'comments.lastObject.name is correct');
+    });
+  });
 });

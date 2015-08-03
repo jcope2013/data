@@ -2,6 +2,55 @@
 
 ### Master
 
+- [#3550](https://github.com/emberjs/data/pull/3550) JSONSerializer now works with EmbeddedRecordsMixin by respecting the `included` property in normalizeResponse [@tstirrat](https://github.com/tstirrat)
+
+### Release 1.13.7 (July 27, 2015)
+
+- [#3554](https://github.com/emberjs/data/pull/3554) Add queryRecord method to the RESTAdapter
+- [#3553](https://github.com/emberjs/data/pull/3553) Reversed args in Ember.Observer
+- [#3531](https://github.com/emberjs/data/pull/3531) Adds some documentation for JSONApiSerializer
+- [#3555](https://github.com/emberjs/data/pull/3555) [BUGFIX release] Transition to loaded.saved state after rollback
+- [#3558](https://github.com/emberjs/data/pull/3558) [BUGFIX release] Follow JSON-API error object spec
+- [#3560](https://github.com/emberjs/data/pull/3560) Deprecate error property
+- [#3562](https://github.com/emberjs/data/pull/3562) remove babel warnings around parameters
+- [#3563](https://github.com/emberjs/data/pull/3563) [DOC release] Adding documentation for SnapshotRecordArray
+- [#3571](https://github.com/emberjs/data/pull/3571) [DOC release] Update README examples
+- [#3575](https://github.com/emberjs/data/pull/3575) [BUGFIX release] Update `Ember.deprecate` and `Ember.warn` calls to include required information
+- [#3582](https://github.com/emberjs/data/pull/3582) [BUGFIX release] Fix unconsistent behavior in Model.changedAttributes
+- [#3590](https://github.com/emberjs/data/pull/3590) Update bin/changelog to deal with cherry-picked commits
+
+### Release 1.13.6 (July 21, 2015)
+
+- [#3564](https://github.com/emberjs/data/pull/3564) [BUGFIX release] backport ActiveModelAdapter changes [@fivetanley](https://github.com/fivetanley)
+- [#3569](https://github.com/emberjs/data/pull/3569) [BUGFIX release] squash normalizePayload deprecations [@fivetanley](https://github.com/fivetanley)
+- [BUGFIX release] fix some code for IE8 compat in ActiveModelSerializer
+- [#3544](https://github.com/emberjs/data/pull/3544)[BUGFIX release] Add error message in _pushInternalMessage when unknown type [@serabe](https://github.com/Serabe)
+- [#3550](https://github.com/emberjs/data/pull/3550)[BUGFIX release] JSONSerializer pass through `payload.included`[@tstirrat](https://github.com/tstirrat)
+- [#3534](https://github.com/emberjs/data/pull/3534)[DOC release] Rename `error` to `adapterError` [@tchak](https://github.com/tchak)
+- [#3550](https://github.com/emberjs/data/pull/3550)[BUGFIX release] JSONSerializer pass through `payload.included` [@tstirrat](https://github.com/tstirrat)
+
+### Release 1.13.5 (July 8, 2015)
+
+- [#3437](https://github.com/emberjs/data/pull/3437) Deprecate normalizePayload and normalizeHash [@wecc](https://github.com/wecc)
+- [#3478](https://github.com/emberjs/data/pull/3478) Fix Ember Data build with fresh install [@sly7-7](https://github.com/sly7-7)
+- [#3475](https://github.com/emberjs/data/pull/3475) [BUGFIX release] Remove deprecation warning for dev, keep IE 8 compat [@sly7-7](https://github.com/sly7-7)
+- [#3452](https://github.com/emberjs/data/pull/3452) [BUGFIX release] handle case where linked relationship data is null [@pangratz](https://github.com/pangratz)
+- [#3458](https://github.com/emberjs/data/pull/3458) [DOC] createRecord relationships close #3421 [@givanse](https://github.com/givanse)
+- [#3460](https://github.com/emberjs/data/pull/3460) [BUGFIX release] Do not register the service store when it has already been registered [@loadimpact](https://github.com/loadimpact)
+- [#3462](https://github.com/emberjs/data/pull/3462) Fix documentation typos in Adapter [@sutherland](https://github.com/sutherland)
+- [#3473](https://github.com/emberjs/data/pull/3473) [DOC] Fill @property of DS.Model.modelName [@XrXr](https://github.com/XrXr)
+- [#3479](https://github.com/emberjs/data/pull/3479) [DOC release] Fix typo in JSONSerializer.extractAttributes docs [@pdud](https://github.com/pdud)
+- [#3482](https://github.com/emberjs/data/pull/3482) [BUGFIX release] Update the version of ember-new-computed to fix an E… [@bmac](https://github.com/bmac)
+- [#3481](https://github.com/emberjs/data/pull/3481) update errors.js docs to mirror new json api error specs [@philipp-spiess](https://github.com/philipp-spiess)
+- [#3497](https://github.com/emberjs/data/pull/3497) Use `detail` instead of `details` for JSON API error objects [@sebastianseilund](https://github.com/sebastianseilund)
+- [#3503](https://github.com/emberjs/data/pull/3503) [DOC release] Fix documentation for DS.InternalModel#_changedKeys() [@hibariya](https://github.com/hibariya)
+- [#3505](https://github.com/emberjs/data/pull/3505) [BUGFIX release] Do not assume the serializer is an Ember object. [@bmac](https://github.com/bmac)
+- [#3511](https://github.com/emberjs/data/pull/3511) Assert serializers are using the same API [@wecc](https://github.com/wecc)
+- [#3468](https://github.com/emberjs/data/pull/3468) [BUGFIX release] shouldReloadRecord and shouldBackgroundReloadRecord … [@bmac](https://github.com/bmac)
+- [#3513](https://github.com/emberjs/data/pull/3513) [BUGFIX release] Always look up the serializer using store.serializerFor [@bmac](https://github.com/bmac)
+- [#3477](https://github.com/emberjs/data/pull/3477) Add modelClass argument to JSONSerializer.extractId [@pdud](https://github.com/pdud)
+
+
 ### Release 1.13.4 (June 22, 2015)
 
 - [#3398](https://github.com/emberjs/data/pull/3398) [REGRESSION release] Make meta available with new Serializer API [@wecc](https://github.com/wecc)
@@ -41,7 +90,7 @@
 - [#3232](https://github.com/emberjs/data/pull/3232) Add findByRecord and deprecate findById [@HeroicEric](https://github.com/HeroicEric)
 - [#3167](https://github.com/emberjs/data/pull/3167) store.all() is not treated as a filteredRecordArray anymore [@pangratz](https://github.com/pangratz)
 - [#3218](https://github.com/emberjs/data/pull/3218) Implement extractMeta for new Serializer API [@wecc](https://github.com/wecc)
-- [#3226](https://github.com/emberjs/data/pull/3226) Warnings for incorrect options in belongsTo, resolves #3187 [@zoeesilcock/feature](https://github.com/zoeesilcock/feature)
+- [#3226](https://github.com/emberjs/data/pull/3226) Warnings for incorrect options in belongsTo, resolves #3187 [@zoeesilcock](https://github.com/zoeesilcock)
 - [#3234](https://github.com/emberjs/data/pull/3234) Make store.findAll(type) public [@HeroicEric](https://github.com/HeroicEric)
 - [#3214](https://github.com/emberjs/data/pull/3214) serialize:true takes priority over the OneToMany check for relationships [@sly7-7](https://github.com/sly7-7)
 - [#3216](https://github.com/emberjs/data/pull/3216) Record property changes [@bmac](https://github.com/bmac)
@@ -100,9 +149,9 @@
 
 ##### Store Service moved to an Instance Initializer
 
-In order to fix deprecations warning induced by Ember 1.12, the store service 
-is now injected as an instanceInitializer. As a consequence, if you had initializers 
-depending on the store, you should move them to an instance initializer as well, 
+In order to fix deprecations warning induced by Ember 1.12, the store service
+is now injected as an instanceInitializer. As a consequence, if you had initializers
+depending on the store, you should move them to an instance initializer as well,
 and mark it as after: 'ember-data'.
 
 - Removed support for DS.FixtureAdapter. You can use it as an addon, or

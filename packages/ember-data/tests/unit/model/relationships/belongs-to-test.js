@@ -20,10 +20,41 @@ test("belongsTo lazily loads relationships as needed", function() {
 
   var env = setupStore({ tag: Tag, person: Person });
   var store = env.store;
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.pushMany('tag', [{ id: 5, name: "friendly" }, { id: 2, name: "smarmy" }, { id: 12, name: "oohlala" }]);
-    store.push('person', { id: 1, name: "Tom Dale", tag: 5 });
+    store.push({
+      data: [{
+        type: 'tag',
+        id: '5',
+        attributes: {
+          name: 'friendly'
+        }
+      }, {
+        type: 'tag',
+        id: '2',
+        attributes: {
+          name: 'smarmy'
+        }
+      }, {
+        type: 'tag',
+        id: '12',
+        attributes: {
+          name: 'oohlala'
+        }
+      }, {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          tag: {
+            data: { type: 'tag', id: '5' }
+          }
+        }
+      }]
+    });
   });
 
   run(function() {
@@ -96,17 +127,34 @@ test("async belongsTo relationships work when the data hash has already been loa
   var store = env.store;
 
   run(function() {
-    store.push('tag', { id: 2, name: "friendly" });
-    store.push('person', { id: 1, name: "Tom Dale", tag: 2 });
+    store.push({
+      data: [{
+        type: 'tag',
+        id: '2',
+        attributes: {
+          name: 'friendly'
+        }
+      }, {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          tag: {
+            data: { type: 'tag', id: '2' }
+          }
+        }
+      }]
+    });
   });
 
   run(function() {
-    store.findRecord('person', 1).then(async(function(person) {
-      equal(get(person, 'name'), "Tom Dale", "The person is now populated");
-      return run(function() {
-        return get(person, 'tag');
-      });
-    })).then(async(function(tag) {
+    var person = store.peekRecord('person', 1);
+    equal(get(person, 'name'), "Tom Dale", "The person is now populated");
+    return run(function() {
+      return get(person, 'tag');
+    }).then(async(function(tag) {
       equal(get(tag, 'name'), "friendly", "Tom Dale is now friendly");
       equal(get(tag, 'isLoaded'), true, "Tom Dale is now loaded");
     }));
@@ -128,6 +176,7 @@ test("calling createRecord and passing in an undefined value for a relationship 
 
   var env = setupStore({ tag: Tag, person: Person });
   var store = env.store;
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
     store.createRecord('person', { id: 1, tag: undefined });
@@ -157,6 +206,7 @@ test("When finding a hasMany relationship the inverse belongsTo relationship is 
 
   var env = setupStore({ occupation: Occupation, person: Person });
   var store = env.store;
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   env.adapter.findMany = function(store, type, ids, snapshots) {
     equal(snapshots[0].belongsTo('person').id, '1');
@@ -166,7 +216,23 @@ test("When finding a hasMany relationship the inverse belongsTo relationship is 
   env.adapter.coalesceFindRequests = true;
 
   run(function() {
-    store.push('person', { id: 1, name: "Tom Dale", occupations: [5, 2] });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          occupations: {
+            data: [
+              { type: 'occupation', id: '5' },
+              { type: 'occupation', id: '2' }
+            ]
+          }
+        }
+      }
+    });
   });
 
   run(function() {
@@ -210,7 +276,20 @@ test("When finding a belongsTo relationship the inverse belongsTo relationship i
   };
 
   run(function() {
-    store.push('person', { id: 1, name: "Tom Dale", occupation: 5 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          occupation: {
+            data: { type: 'occupation', id: '5' }
+          }
+        }
+      }
+    });
   });
 
   run(function() {
@@ -235,10 +314,41 @@ test("belongsTo supports relationships to models with id 0", function() {
 
   var env = setupStore({ tag: Tag, person: Person });
   var store = env.store;
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.pushMany('tag', [{ id: 0, name: "friendly" }, { id: 2, name: "smarmy" }, { id: 12, name: "oohlala" }]);
-    store.push('person', { id: 1, name: "Tom Dale", tag: 0 });
+    store.push({
+      data: [{
+        type: 'tag',
+        id: '0',
+        attributes: {
+          name: 'friendly'
+        }
+      }, {
+        type: 'tag',
+        id: '2',
+        attributes: {
+          name: 'smarmy'
+        }
+      }, {
+        type: 'tag',
+        id: '12',
+        attributes: {
+          name: 'oohlala'
+        }
+      }, {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          tag: {
+            data: { type: 'tag', id: '0' }
+          }
+        }
+      }]
+    });
   });
 
   run(function() {
@@ -268,10 +378,35 @@ test("belongsTo gives a warning when provided with a serialize option", function
 
   var env = setupStore({ hobby: Hobby, person: Person });
   var store = env.store;
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.pushMany('hobby', [{ id: 1, name: "fishing" }, { id: 1, name: "coding" }]);
-    store.push('person', { id: 1, name: "Tom Dale", hobby: 1 });
+    store.push({
+      data: [{
+        type: 'hobby',
+        id: '1',
+        attributes: {
+          name: 'fishing'
+        }
+      }, {
+        type: 'hobby',
+        id: '2',
+        attributes: {
+          name: 'coding'
+        }
+      }, {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          hobby: {
+            data: { type: 'hobby', id: '1' }
+          }
+        }
+      }]
+    });
   });
 
   warns(function() {
@@ -297,10 +432,35 @@ test("belongsTo gives a warning when provided with an embedded option", function
 
   var env = setupStore({ hobby: Hobby, person: Person });
   var store = env.store;
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.pushMany('hobby', [{ id: 1, name: "fishing" }, { id: 1, name: "coding" }]);
-    store.push('person', { id: 1, name: "Tom Dale", hobby: 1 });
+    store.push({
+      data: [{
+        type: 'hobby',
+        id: '1',
+        attributes: {
+          name: 'fishing'
+        }
+      }, {
+        type: 'hobby',
+        id: '2',
+        attributes: {
+          name: 'coding'
+        }
+      }, {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          hobby: {
+            data: { type: 'hobby', id: '1' }
+          }
+        }
+      }]
+    });
   });
 
   warns(function() {
@@ -312,13 +472,7 @@ test("belongsTo gives a warning when provided with an embedded option", function
   }, /You provided an embedded option on the "hobby" property in the "person" class, this belongs in the serializer. See DS.EmbeddedRecordsMixin/);
 });
 
-module("unit/model/relationships - DS.belongsTo async by default deprecations", {
-  setup: function() {
-    setupStore();
-  }
-});
-
-test("setting DS.belongsTo without async false triggers deprecation", function() {
+test("DS.belongsTo should be async by default", function() {
   var Tag = DS.Model.extend({
     name: DS.attr('string'),
     people: DS.hasMany('person', { async: false })
@@ -332,12 +486,10 @@ test("setting DS.belongsTo without async false triggers deprecation", function()
   var env = setupStore({ tag: Tag, person: Person });
   var store = env.store;
 
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.createRecord('person').get('tag');
-      });
-    },
-    /In Ember Data 2.0, relationships will be asynchronous by default. You must set `tag: DS.belongsTo\('tag', { async: false }\)`/
-  );
+
+  run(function() {
+    var person = store.createRecord('person');
+
+    ok(person.get('tag') instanceof DS.PromiseObject, 'tag should be an async relationship');
+  });
 });

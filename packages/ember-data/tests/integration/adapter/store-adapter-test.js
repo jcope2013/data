@@ -69,7 +69,7 @@ test("Records loaded multiple times and retrieved in recordArray are ready to se
 
 test("by default, createRecords calls createRecord once per record", function() {
   var count = 1;
-
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.createRecord = function(store, type, snapshot) {
     equal(type, Person, "the type is correct");
 
@@ -114,7 +114,7 @@ test("by default, createRecords calls createRecord once per record", function() 
 
 test("by default, updateRecords calls updateRecord once per record", function() {
   var count = 0;
-
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.updateRecord = function(store, type, snapshot) {
     equal(type, Person, "the type is correct");
 
@@ -134,8 +134,21 @@ test("by default, updateRecords calls updateRecord once per record", function() 
   };
 
   run(function() {
-    store.push('person', { id: 1, name: "Braaaahm Dale" });
-    store.push('person', { id: 2, name: "Brohuda Katz" });
+    env.store.push({
+      data: [{
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Braaaahm Dale'
+        }
+      }, {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Brohuda Katz'
+        }
+      }]
+    });
   });
 
   var promise = run(function() {
@@ -167,7 +180,7 @@ test("by default, updateRecords calls updateRecord once per record", function() 
 
 test("calling store.didSaveRecord can provide an optional hash", function() {
   var count = 0;
-
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.updateRecord = function(store, type, snapshot) {
     equal(type, Person, "the type is correct");
 
@@ -184,8 +197,21 @@ test("calling store.didSaveRecord can provide an optional hash", function() {
   };
 
   run(function() {
-    store.push('person', { id: 1, name: "Braaaahm Dale" });
-    store.push('person', { id: 2, name: "Brohuda Katz" });
+    env.store.push({
+      data: [{
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Braaaahm Dale'
+        }
+      }, {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Brohuda Katz'
+        }
+      }]
+    });
   });
 
   var promise = run(function() {
@@ -218,7 +244,7 @@ test("by default, deleteRecord calls deleteRecord once per record", function() {
   expect(4);
 
   var count = 0;
-
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.deleteRecord = function(store, type, snapshot) {
     equal(type, Person, "the type is correct");
 
@@ -236,8 +262,21 @@ test("by default, deleteRecord calls deleteRecord once per record", function() {
   };
 
   run(function() {
-    store.push('person', { id: 1, name: "Tom Dale" });
-    store.push('person', { id: 2, name: "Yehuda Katz" });
+    env.store.push({
+      data: [{
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        }
+      }, {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Yehuda Katz'
+        }
+      }]
+    });
   });
 
   var promise = run(function() {
@@ -263,7 +302,7 @@ test("by default, destroyRecord calls deleteRecord once per record without requi
   expect(4);
 
   var count = 0;
-
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.deleteRecord = function(store, type, snapshot) {
     equal(type, Person, "the type is correct");
 
@@ -281,8 +320,21 @@ test("by default, destroyRecord calls deleteRecord once per record without requi
   };
 
   run(function() {
-    store.push('person', { id: 1, name: "Tom Dale" });
-    store.push('person', { id: 2, name: "Yehuda Katz" });
+    env.store.push({
+      data: [{
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        }
+      }, {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Yehuda Katz'
+        }
+      }]
+    });
   });
 
   var promise = run(function() {
@@ -305,7 +357,7 @@ test("if an existing model is edited then deleted, deleteRecord is called on the
   expect(5);
 
   var count = 0;
-
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.deleteRecord = function(store, type, snapshot) {
     count++;
     equal(snapshot.id, 'deleted-record', "should pass correct record to deleteRecord");
@@ -320,7 +372,15 @@ test("if an existing model is edited then deleted, deleteRecord is called on the
 
   // Load data for a record into the store.
   run(function() {
-    store.push('person', { id: 'deleted-record', name: "Tom Dale" });
+    env.store.push({
+      data: {
+        type: 'person',
+        id: 'deleted-record',
+        attributes: {
+          name: 'Tom Dale'
+        }
+      }
+    });
   });
 
   // Retrieve that loaded record and edit it so it becomes dirty
@@ -339,17 +399,27 @@ test("if an existing model is edited then deleted, deleteRecord is called on the
 
 test("if a deleted record errors, it enters the error state", function() {
   var count = 0;
+  var error = new DS.AdapterError();
 
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.deleteRecord = function(store, type, snapshot) {
     if (count++ === 0) {
-      return Ember.RSVP.reject();
+      return Ember.RSVP.reject(error);
     } else {
       return Ember.RSVP.resolve();
     }
   };
 
   run(function() {
-    store.push('person', { id: 'deleted-record', name: "Tom Dale" });
+    env.store.push({
+      data: {
+        type: 'person',
+        id: 'deleted-record',
+        attributes: {
+          name: 'Tom Dale'
+        }
+      }
+    });
   });
 
   var tom;
@@ -361,11 +431,13 @@ test("if a deleted record errors, it enters the error state", function() {
       return person.save();
     })).then(null, async(function() {
       equal(tom.get('isError'), true, "Tom is now errored");
+      equal(tom.get('adapterError'), error, "error object is exposed");
 
       // this time it succeeds
       return tom.save();
     })).then(async(function() {
       equal(tom.get('isError'), false, "Tom is not errored anymore");
+      equal(tom.get('adapterError'), null, "error object is discarded");
     }));
   });
 });
@@ -500,8 +572,10 @@ test("if a created record is marked as invalid by the server, you can attempt th
 });
 
 test("if a created record is marked as erred by the server, it enters an error state", function() {
+  var error = new DS.AdapterError();
+
   adapter.createRecord = function(store, type, snapshot) {
-    return Ember.RSVP.reject();
+    return Ember.RSVP.reject(error);
   };
 
   Ember.run(function() {
@@ -509,11 +583,13 @@ test("if a created record is marked as erred by the server, it enters an error s
 
     person.save().then(null, async(function() {
       ok(get(person, 'isError'), "the record is in the error state");
+      equal(get(person, 'adapterError'), error, "error object is exposed");
     }));
   });
 });
 
 test("if an updated record is marked as invalid by the server, it enters an error state", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.updateRecord = function(store, type, snapshot) {
     equal(type, Person, "the type is correct");
 
@@ -525,7 +601,16 @@ test("if an updated record is marked as invalid by the server, it enters an erro
   };
 
   var yehuda = run(function() {
-    return store.push('person', { id: 1, name: "Brohuda Brokatz" });
+    env.store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Brohuda Brokatz'
+        }
+      }
+    });
+    return store.peekRecord('person', 1);
   });
 
   Ember.run(function() {
@@ -560,6 +645,7 @@ test("if an updated record is marked as invalid by the server, it enters an erro
 
 
 test("records can have errors on arbitrary properties after update", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.updateRecord = function(store, type, snapshot) {
     if (snapshot.attr('name').indexOf('Bro') === -1) {
       return Ember.RSVP.reject(new DS.InvalidError({ base: ['is a generally unsavoury character'] }));
@@ -569,7 +655,16 @@ test("records can have errors on arbitrary properties after update", function() 
   };
 
   var yehuda = run(function() {
-    return store.push('person', { id: 1, name: "Brohuda Brokatz" });
+    env.store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Brohuda Brokatz'
+        }
+      }
+    });
+    return store.peekRecord('person', 1);
   });
 
   run(function() {
@@ -610,6 +705,7 @@ test("records can have errors on arbitrary properties after update", function() 
 
 test("if an updated record is marked as invalid by the server, you can attempt the save again", function() {
   var saveCount = 0;
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.updateRecord = function(store, type, snapshot) {
     equal(type, Person, "the type is correct");
     saveCount++;
@@ -621,7 +717,16 @@ test("if an updated record is marked as invalid by the server, you can attempt t
   };
 
   var yehuda = run(function() {
-    return store.push('person', { id: 1, name: "Brohuda Brokatz" });
+    env.store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Brohuda Brokatz'
+        }
+      }
+    });
+    return store.peekRecord('person', 1);
   });
 
   Ember.run(function() {
@@ -659,12 +764,24 @@ test("if an updated record is marked as invalid by the server, you can attempt t
 
 
 test("if a updated record is marked as erred by the server, it enters an error state", function() {
+  var error = new DS.AdapterError();
+
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.updateRecord = function(store, type, snapshot) {
-    return Ember.RSVP.reject();
+    return Ember.RSVP.reject(error);
   };
 
   var person = run(function() {
-    return store.push('person', { id: 1, name: "John Doe" });
+    env.store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'John Doe'
+        }
+      }
+    });
+    return store.peekRecord('person', 1);
   });
 
   run(store, 'findRecord', 'person', 1).then(async(function(record) {
@@ -673,6 +790,7 @@ test("if a updated record is marked as erred by the server, it enters an error s
     return person.save();
   })).then(null, async(function(reason) {
     ok(get(person, 'isError'), "the record is in the error state");
+    equal(get(person, 'adapterError'), error, "error object is exposed");
   }));
 });
 
@@ -690,6 +808,7 @@ test("can be created after the DS.Store", function() {
 });
 
 test("the filter method can optionally take a server query as well", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   adapter.query = function(store, type, query, array) {
     return Ember.RSVP.resolve([
       { id: 1, name: "Yehuda Katz" },
@@ -718,7 +837,15 @@ test("relationships returned via `commit` do not trigger additional findManys", 
   });
 
   run(function() {
-    store.push('dog', { id: 1, name: "Scruffy" });
+    env.store.push({
+      data: {
+        type: 'dog',
+        id: '1',
+        attributes: {
+          name: 'Scruffy'
+        }
+      }
+    });
   });
 
   adapter.findRecord = function(store, type, id, snapshot) {
@@ -727,8 +854,31 @@ test("relationships returned via `commit` do not trigger additional findManys", 
 
   adapter.updateRecord = function(store, type, snapshot) {
     return new Ember.RSVP.Promise(function(resolve, reject) {
-      store.push('person', { id: 1, name: "Tom Dale", dogs: [1, 2] });
-      store.push('dog', { id: 2, name: "Scruffles" });
+      env.store.push({
+        data: {
+          type: 'person',
+          id: '1',
+          attributes: {
+            name: 'Tom Dale'
+          },
+          relationships: {
+            dogs: {
+              data: [
+                { type: 'dog', id: '1' },
+                { type: 'dog', id: '2' }
+              ]
+            }
+          }
+        },
+        included: [{
+          type: 'dog',
+          id: '2',
+          attributes: {
+            name: 'Scruffles'
+          }
+        }]
+      });
+
       resolve({ id: 1, name: "Scruffy" });
     });
   };
@@ -750,6 +900,7 @@ test("relationships returned via `commit` do not trigger additional findManys", 
 });
 
 test("relationships don't get reset if the links is the same", function() {
+  adapter.shouldBackgroundReloadRecord = () => false;
   Person.reopen({
     dogs: DS.hasMany({ async: true })
   });
@@ -763,7 +914,22 @@ test("relationships don't get reset if the links is the same", function() {
   };
 
   run(function() {
-    store.push('person', { id: 1, name: "Tom Dale", links: { dogs: "/dogs" } });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          dogs: {
+            links: {
+              related: '/dogs'
+            }
+          }
+        }
+      }
+    });
   });
 
   var tom, dogs;
@@ -774,7 +940,22 @@ test("relationships don't get reset if the links is the same", function() {
     return dogs;
   })).then(async(function(dogs) {
     equal(dogs.get('length'), 1, "The dogs are loaded");
-    store.push('person', { id: 1, name: "Tom Dale", links: { dogs: "/dogs" } });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          dogs: {
+            links: {
+              related: '/dogs'
+            }
+          }
+        }
+      }
+    });
     ok(tom.get('dogs') instanceof DS.PromiseArray, 'dogs is a promise');
     return tom.get('dogs');
   })).then(async(function(dogs) {
@@ -835,7 +1016,16 @@ test("updateRecord receives a snapshot", function() {
   var person;
 
   run(function() {
-    person = store.push('person', { id: 1, name: "Tom Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
   });
 
   run(function() {
@@ -855,7 +1045,16 @@ test("deleteRecord receives a snapshot", function() {
   var person;
 
   run(function() {
-    person = store.push('person', { id: 1, name: "Tom Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
   });
 
   run(function() {
@@ -894,7 +1093,21 @@ test("findMany receives an array of snapshots", function() {
   var person;
 
   run(function() {
-    person = store.push('person', { id: 1, dogs: [2, 3] });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        relationships: {
+          dogs: {
+            data: [
+              { type: 'dog', id: '2' },
+              { type: 'dog', id: '3' }
+            ]
+          }
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
   });
 
   run(function() {
@@ -917,7 +1130,20 @@ test("findHasMany receives a snapshot", function() {
   var person;
 
   run(function() {
-    person = store.push('person', { id: 1, links: { dogs: 'dogs' } });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        relationships: {
+          dogs: {
+            links: {
+              related: 'dogs'
+            }
+          }
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
   });
 
   run(function() {
@@ -940,7 +1166,20 @@ test("findBelongsTo receives a snapshot", function() {
   var person;
 
   run(function() {
-    person = store.push('person', { id: 1, links: { dog: 'dog' } });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        relationships: {
+          dog: {
+            links: {
+              related: 'dog'
+            }
+          }
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
   });
 
   run(function() {
@@ -957,7 +1196,16 @@ test("record.save should pass adapterOptions to the updateRecord method", functi
   });
 
   run(function() {
-    var person = store.push('person', { id: 1, name: 'Tom' });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom'
+        }
+      }
+    });
+    var person = store.peekRecord('person', 1);
     person.save({ adapterOptions: { subscribe: true } });
   });
 });
@@ -985,7 +1233,16 @@ test("record.save should pass adapterOptions to the deleteRecord method", functi
   });
 
   run(function() {
-    var person = store.push('person', { id: 1, name: 'Tom' });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom'
+        }
+      }
+    });
+    var person = store.peekRecord('person', 1);
     person.destroyRecord({ adapterOptions: { subscribe: true } });
   });
 });
@@ -1017,4 +1274,52 @@ test("findAll should pass adapterOptions to the findAll method", function() {
   run(function() {
     store.findAll('person', { adapterOptions: { query: { embed: true } } });
   });
+});
+
+
+test("An async hasMany relationship with links should not trigger shouldBackgroundReloadRecord", function() {
+  var Post = DS.Model.extend({
+    name: DS.attr("string"),
+    comments: DS.hasMany('comment', { async: true })
+  });
+
+  var Comment = DS.Model.extend({
+    name: DS.attr("string")
+  });
+
+  env = setupStore({
+    post: Post,
+    comment: Comment,
+    adapter: DS.RESTAdapter.extend({
+      findRecord: function() {
+        return {
+          posts: {
+            id: 1,
+            name: "Rails is omakase",
+            links: { comments: '/posts/1/comments' }
+          }
+        };
+      },
+      findHasMany: function() {
+        return Ember.RSVP.resolve({
+          comments: [
+            { id: 1, name: "FIRST" },
+            { id: 2, name: "Rails is unagi" },
+            { id: 3, name: "What is omakase?" }
+          ]
+        });
+      },
+      shouldBackgroundReloadRecord: function() {
+        ok(false, 'shouldBackgroundReloadRecord should not be called');
+      }
+    })
+  });
+
+  store = env.store;
+
+  run(store, 'find', 'post', '1').then(async(function(post) {
+    return post.get('comments');
+  })).then(async(function(comments) {
+    equal(comments.get('length'), 3);
+  }));
 });

@@ -322,7 +322,6 @@ var DirtyState = {
     // EVENTS
     deleteRecord: function(internalModel) {
       internalModel.transitionTo('deleted.uncommitted');
-      internalModel.disconnectRelationships();
     },
 
     didSetProperty: function(internalModel, context) {
@@ -342,6 +341,7 @@ var DirtyState = {
 
     rolledBack: function(internalModel) {
       internalModel.clearErrorMessages();
+      internalModel.transitionTo('loaded.saved');
       internalModel.triggerLater('ready');
     },
 
@@ -354,7 +354,7 @@ var DirtyState = {
     },
 
     exit: function(internalModel) {
-      internalModel._inFlightAttributes = Ember.create(null);
+      internalModel._inFlightAttributes = Object.create(null);
     }
   }
 };
@@ -410,7 +410,6 @@ var updatedState = dirtyState({
 });
 
 createdState.uncommitted.deleteRecord = function(internalModel) {
-  internalModel.disconnectRelationships();
   internalModel.transitionTo('deleted.saved');
   internalModel.send('invokeLifecycleCallbacks');
 };
@@ -435,7 +434,6 @@ updatedState.inFlight.unloadRecord = assertAgainstUnloadRecord;
 
 updatedState.uncommitted.deleteRecord = function(internalModel) {
   internalModel.transitionTo('deleted.uncommitted');
-  internalModel.disconnectRelationships();
 };
 
 var RootState = {
@@ -546,7 +544,7 @@ var RootState = {
     saved: {
       setup: function(internalModel) {
         var attrs = internalModel._attributes;
-        var isDirty = Ember.keys(attrs).length > 0;
+        var isDirty = Object.keys(attrs).length > 0;
 
         if (isDirty) {
           internalModel.adapterDidDirty();
@@ -572,7 +570,6 @@ var RootState = {
 
       deleteRecord: function(internalModel) {
         internalModel.transitionTo('deleted.uncommitted');
-        internalModel.disconnectRelationships();
       },
 
       unloadRecord: function(internalModel) {
@@ -685,6 +682,7 @@ var RootState = {
       isDirty: false,
 
       setup: function(internalModel) {
+        internalModel.clearRelationships();
         var store = internalModel.store;
         store._dematerializeRecord(internalModel);
       },

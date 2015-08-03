@@ -1,6 +1,6 @@
 const EmberError = Ember.Error;
 
-const SOURCE_POINTER_REGEXP = /data\/(attributes|relationships)\/(.*)/;
+const SOURCE_POINTER_REGEXP = /^\/?data\/(attributes|relationships)\/(.*)/;
 
 /**
   @class AdapterError
@@ -12,7 +12,7 @@ export function AdapterError(errors, message = 'Adapter operation failed') {
   this.errors = errors || [
     {
       title: 'Adapter Error',
-      details: message
+      detail: message
     }
   ];
 }
@@ -56,11 +56,11 @@ AdapterError.prototype = Object.create(EmberError.prototype);
       // Fictional adapter that always rejects
       return Ember.RSVP.reject(new DS.InvalidError([
         {
-          details: 'Must be unique',
+          detail: 'Must be unique',
           source: { pointer: 'data/attributes/title' }
         },
         {
-          details: 'Must not be blank',
+          detail: 'Must not be blank',
           source: { pointer: 'data/attributes/content'}
         }
       ]));
@@ -79,7 +79,7 @@ AdapterError.prototype = Object.create(EmberError.prototype);
 */
 export function InvalidError(errors) {
   if (!Ember.isArray(errors)) {
-    Ember.deprecate('`InvalidError` expects json-api formatted errors.');
+    Ember.deprecate('`InvalidError` expects json-api formatted errors.', false, { id: 'ds.errors.invalid-error-expects-json-api-format', until: '2.0.0' });
     errors = errorsHashToArray(errors);
   }
   AdapterError.call(this, errors, 'The adapter rejected the commit because it was invalid');
@@ -108,6 +108,7 @@ export function AbortError() {
 AbortError.prototype = Object.create(AdapterError.prototype);
 
 /**
+  @method errorsHashToArray
   @private
 */
 export function errorsHashToArray(errors) {
@@ -119,9 +120,9 @@ export function errorsHashToArray(errors) {
       for (let i = 0; i < messages.length; i++) {
         out.push({
           title: 'Invalid Attribute',
-          details: messages[i],
+          detail: messages[i],
           source: {
-            pointer: `data/attributes/${key}`
+            pointer: `/data/attributes/${key}`
           }
         });
       }
@@ -131,6 +132,10 @@ export function errorsHashToArray(errors) {
   return out;
 }
 
+/**
+  @method errorsArrayToHash
+  @private
+*/
 export function errorsArrayToHash(errors) {
   let out = {};
 
@@ -142,7 +147,7 @@ export function errorsArrayToHash(errors) {
         if (key) {
           key = key[2];
           out[key] = out[key] || [];
-          out[key].push(error.details || error.title);
+          out[key].push(error.detail || error.title);
         }
       }
     });

@@ -16,7 +16,17 @@ module("unit/model/rollbackAttributes - model.rollbackAttributes()", {
 test("changes to attributes can be rolled back", function() {
   var person;
   run(function() {
-    person = store.push('person', { id: 1, firstName: "Tom", lastName: "Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          firstName: "Tom",
+          lastName: "Dale"
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
     person.set('firstName', "Thomas");
   });
 
@@ -33,7 +43,16 @@ test("changes to attributes can be rolled back", function() {
 test("changes to unassigned attributes can be rolled back", function() {
   var person;
   run(function() {
-    person = store.push('person', { id: 1, lastName: "Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          lastName: "Dale"
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
     person.set('firstName', "Thomas");
   });
 
@@ -57,7 +76,17 @@ test("changes to attributes made after a record is in-flight only rolls back the
   var person;
 
   run(function() {
-    person = store.push('person', { id: 1, firstName: "Tom", lastName: "Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          firstName: "Tom",
+          lastName: "Dale"
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
     person.set('firstName', "Thomas");
   });
 
@@ -89,7 +118,17 @@ test("a record's changes can be made if it fails to save", function() {
   var person;
 
   run(function() {
-    person = store.push('person', { id: 1, firstName: "Tom", lastName: "Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          firstName: "Tom",
+          lastName: "Dale"
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
     person.set('firstName', "Thomas");
   });
 
@@ -104,28 +143,38 @@ test("a record's changes can be made if it fails to save", function() {
 
       equal(person.get('firstName'), "Tom");
       equal(person.get('isError'), false);
-      equal(Ember.keys(person.changedAttributes()).length, 0);
+      equal(Object.keys(person.changedAttributes()).length, 0);
     });
   });
 });
 
 test("a deleted record's attributes can be rollbacked if it fails to save, record arrays are updated accordingly", function() {
-  expect(7);
+  expect(8);
   env.adapter.deleteRecord = function(store, type, snapshot) {
     return Ember.RSVP.reject();
   };
   var person, people;
 
   run(function() {
-    person = store.push('person', { id: 1, firstName: "Tom", lastName: "Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          firstName: "Tom",
+          lastName: "Dale"
+        }
+      }
+    });
+    person = store.peekRecord('person', 1);
     people = store.peekAll('person');
   });
 
   run(function() {
     person.deleteRecord();
   });
-  equal(people.get('length'), 0, "a deleted record does not appear in record array anymore");
-  equal(people.objectAt(0), null, "a deleted record does not appear in record array anymore");
+  equal(people.get('length'), 1, "a deleted record appears in record array until it is saved");
+  equal(people.objectAt(0), person, "a deleted record appears in record array until it is saved");
 
   run(function() {
     person.save().then(null, function() {
@@ -136,6 +185,7 @@ test("a deleted record's attributes can be rollbacked if it fails to save, recor
       });
       equal(person.get('isDeleted'), false);
       equal(person.get('isError'), false);
+      equal(person.get('hasDirtyAttributes'), false, "must be not dirty");
     }).then(function() {
       equal(people.get('length'), 1, "the underlying record array is updated accordingly in an asynchronous way");
     });
@@ -161,10 +211,14 @@ test("new record's attributes can be rollbacked", function() {
 
 test("invalid new record's attributes can be rollbacked", function() {
   var person;
+  var error = new DS.InvalidError([
+    {
+      detail: 'is invalid',
+      source: { pointer: 'data/attributes/name' }
+    }
+  ]);
   var adapter = DS.RESTAdapter.extend({
     ajax: function(url, type, hash) {
-      var adapter = this;
-
       return new Ember.RSVP.Promise(function(resolve, reject) {
         /* If InvalidError is passed back in the reject it will throw the
            exception which will bubble up the call stack (crashing the test)
@@ -173,13 +227,9 @@ test("invalid new record's attributes can be rollbacked", function() {
            completes without failure and the failure hits the failure route
            of the promise instead of crashing the save. */
         Ember.run.next(function() {
-          reject(adapter.ajaxError({ name: 'is invalid' }));
+          reject(error);
         });
       });
-    },
-
-    ajaxError: function(jqXHR) {
-      return new DS.InvalidError(jqXHR);
     }
   });
 
@@ -208,13 +258,19 @@ test("deleted record's attributes can be rollbacked", function() {
   var person, people;
 
   run(function() {
-    person = store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
+    person = store.peekRecord('person', 1);
     people = store.peekAll('person');
     person.deleteRecord();
   });
 
-  equal(people.get('length'), 0, "a deleted record does not appear in record array anymore");
-  equal(people.objectAt(0), null, "a deleted record does not appear in record array anymore");
+  equal(people.get('length'), 1, "a deleted record appears in the record array until it is saved");
+  equal(people.objectAt(0), person, "a deleted record appears in the record array until it is saved");
 
   equal(person.get('isDeleted'), true, "must be deleted");
 
@@ -227,14 +283,20 @@ test("deleted record's attributes can be rollbacked", function() {
 });
 
 test("invalid record's attributes can be rollbacked", function() {
+  expect(10);
   Dog = DS.Model.extend({
     name: DS.attr()
   });
 
+  var error = new DS.InvalidError([
+    {
+      detail: 'is invalid',
+      source: { pointer: 'data/attributes/name' }
+    }
+  ]);
+
   var adapter = DS.RESTAdapter.extend({
     ajax: function(url, type, hash) {
-      var adapter = this;
-
       return new Ember.RSVP.Promise(function(resolve, reject) {
         /* If InvalidError is passed back in the reject it will throw the
            exception which will bubble up the call stack (crashing the test)
@@ -243,43 +305,69 @@ test("invalid record's attributes can be rollbacked", function() {
            completes without failure and the failure hits the failure route
            of the promise instead of crashing the save. */
         Ember.run.next(function() {
-          reject(adapter.ajaxError({ name: 'is invalid' }));
+          reject(error);
         });
       });
-    },
-
-    ajaxError: function(jqXHR) {
-      return new DS.InvalidError(jqXHR);
     }
   });
 
   env = setupStore({ dog: Dog, adapter: adapter });
   var dog;
   run(function() {
-    dog = env.store.push('dog', { id: 1, name: "Pluto" });
+    env.store.push({
+      data: {
+        type: 'dog',
+        id: '1',
+        attributes: {
+          name: "Pluto"
+        }
+      }
+    });
+    dog = env.store.peekRecord('dog', 1);
     dog.set('name', "is a dwarf planet");
   });
 
   run(function() {
+    Ember.addObserver(dog, 'errors.name', function() {
+      ok(true, 'errors.name did change');
+    });
+
+    dog.get('errors').addArrayObserver({}, {
+      willChange: function() {
+        ok(true, 'errors will change');
+      },
+      didChange: function() {
+        ok(true, 'errors did change');
+      }
+    });
+
     dog.save().then(null, async(function() {
       dog.rollbackAttributes();
 
+      equal(dog.get('hasDirtyAttributes'), false, "must not be dirty");
       equal(dog.get('name'), "Pluto");
+      ok(Ember.isEmpty(dog.get('errors.name')));
       ok(dog.get('isValid'));
     }));
   });
 });
 
 test("invalid record's attributes rolled back to correct state after set", function() {
+  expect(13);
   Dog = DS.Model.extend({
     name: DS.attr(),
     breed: DS.attr()
   });
 
+  var error = new DS.InvalidError([
+    {
+      detail: 'is invalid',
+      source: { pointer: 'data/attributes/name' }
+    }
+  ]);
+
   var adapter = DS.RESTAdapter.extend({
     ajax: function(url, type, hash) {
-      var adapter = this;
-
       return new Ember.RSVP.Promise(function(resolve, reject) {
         /* If InvalidError is passed back in the reject it will throw the
            exception which will bubble up the call stack (crashing the test)
@@ -288,28 +376,40 @@ test("invalid record's attributes rolled back to correct state after set", funct
            completes without failure and the failure hits the failure route
            of the promise instead of crashing the save. */
         Ember.run.next(function() {
-          reject(adapter.ajaxError({ name: 'is invalid' }));
+          reject(error);
         });
       });
-    },
-
-    ajaxError: function(jqXHR) {
-      return new Error(jqXHR);
     }
   });
 
   env = setupStore({ dog: Dog, adapter: adapter });
   var dog;
   run(function() {
-    dog = env.store.push('dog', { id: 1, name: "Pluto", breed: "Disney" });
+    env.store.push({
+      data: {
+        type: 'dog',
+        id: '1',
+        attributes: {
+          name: "Pluto",
+          breed: "Disney"
+        }
+      }
+    });
+    dog = env.store.peekRecord('dog', 1);
     dog.set('name', "is a dwarf planet");
     dog.set('breed', 'planet');
   });
 
   run(function() {
+    Ember.addObserver(dog, 'errors.name', function() {
+      ok(true, 'errors.name did change');
+    });
+
     dog.save().then(null, async(function() {
       equal(dog.get('name'), "is a dwarf planet");
       equal(dog.get('breed'), "planet");
+      ok(Ember.isPresent(dog.get('errors.name')));
+      equal(dog.get('errors.name.length'), 1);
 
       run(function() {
         dog.set('name', 'Seymour Asses');
@@ -324,6 +424,8 @@ test("invalid record's attributes rolled back to correct state after set", funct
 
       equal(dog.get('name'), "Pluto");
       equal(dog.get('breed'), "Disney");
+      equal(dog.get('hasDirtyAttributes'), false, "must not be dirty");
+      ok(Ember.isEmpty(dog.get('errors.name')));
       ok(dog.get('isValid'));
     }));
   });
@@ -334,26 +436,36 @@ test("when destroying a record setup the record state to invalid, the record's a
     name: DS.attr()
   });
 
+  var error = new DS.InvalidError([
+    {
+      detail: 'is invalid',
+      source: { pointer: 'data/attributes/name' }
+    }
+  ]);
+
   var adapter = DS.RESTAdapter.extend({
     ajax: function(url, type, hash) {
-      var adapter = this;
-
       return new Ember.RSVP.Promise(function(resolve, reject) {
         Ember.run.next(function() {
-          reject(adapter.ajaxError({ name: 'is invalid' }));
+          reject(error);
         });
       });
-    },
-
-    ajaxError: function(jqXHR) {
-      return new DS.InvalidError(jqXHR);
     }
   });
 
   env = setupStore({ dog: Dog, adapter: adapter });
   var dog;
   run(function() {
-    dog = env.store.push('dog', { id: 1, name: "Pluto" });
+    env.store.push({
+      data: {
+        type: 'dog',
+        id: '1',
+        attributes: {
+          name: "Pluto"
+        }
+      }
+    });
+    dog = env.store.peekRecord('dog', 1);
   });
 
   run(function() {

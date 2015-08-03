@@ -113,7 +113,7 @@ InternalModel.prototype = {
       _internalModel: this,
       currentState: get(this, 'currentState'),
       isError: this.isError,
-      error: this.error
+      adapterError: this.error
     });
     this._triggerDeferredTriggers();
   },
@@ -339,7 +339,6 @@ InternalModel.prototype = {
     if (this.isDeleted()) {
       //TODO: Should probably move this to the state machine somehow
       this.becameReady();
-      this.reconnectRelationships();
     }
 
     if (this.isNew()) {
@@ -449,7 +448,6 @@ InternalModel.prototype = {
     this.eachRelationship((name, relationship) => {
       if (this._relationships.has(name)) {
         var rel = this._relationships.get(name);
-        //TODO(Igor) figure out whether we want to clear or disconnect
         rel.clear();
         rel.destroy();
       }
@@ -459,23 +457,6 @@ InternalModel.prototype = {
       this._implicitRelationships[key].destroy();
     });
   },
-
-  disconnectRelationships: function() {
-    this.eachRelationship((name, relationship) => {
-      this._relationships.get(name).disconnect();
-    });
-    Object.keys(this._implicitRelationships).forEach((key) => {
-      this._implicitRelationships[key].disconnect();
-    });
-  },
-
-  reconnectRelationships: function() {
-    this.eachRelationship((name, relationship) => {
-      this._relationships.get(name).reconnect();
-    });
-    Object.keys(this._implicitRelationships).forEach((key) => this._implicitRelationships[key].reconnect());
-  },
-
 
   /**
     When a find request is triggered on the store, the user can optionally pass in
@@ -568,17 +549,19 @@ InternalModel.prototype = {
     if (this.record) {
       this.record.setProperties({
         isError: true,
-        error: error
+        adapterError: error
       });
     }
   },
 
   didCleanError: function() {
+    this.error = null;
     this.isError = false;
+
     if (this.record) {
       this.record.setProperties({
         isError: false,
-        error: null
+        adapterError: null
       });
     }
   },
@@ -667,7 +650,7 @@ InternalModel.prototype = {
   },
 
   _saveWasRejected: function() {
-    var keys = Ember.keys(this._inFlightAttributes);
+    var keys = Object.keys(this._inFlightAttributes);
     for (var i=0; i < keys.length; i++) {
       if (this._attributes[keys[i]] === undefined) {
         this._attributes[keys[i]] = this._inFlightAttributes[keys[i]];
@@ -677,8 +660,6 @@ InternalModel.prototype = {
   },
 
   /**
-    @method _changedKeys
-
     Ember Data has 3 buckets for storing the value of an attribute on an internalModel.
 
     `_data` holds all of the attributes that have been acknowledged by
@@ -716,6 +697,7 @@ InternalModel.prototype = {
     has updated the value and the key is added to the list of changed
     keys.
 
+    @method _changedKeys
     @private
   */
   _changedKeys: function(updates) {

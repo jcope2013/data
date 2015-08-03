@@ -2,7 +2,7 @@ var get = Ember.get;
 var set = Ember.set;
 var run = Ember.run;
 
-var Person, store, array, env;
+var Person, store, env;
 
 module("unit/model - DS.Model", {
   setup: function() {
@@ -38,9 +38,19 @@ test("can have a property set on it", function() {
 
 test("setting a property on a record that has not changed does not cause it to become dirty", function() {
   expect(2);
-
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    store.push('person', { id: 1, name: "Peter", isDrugAddict: true });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Peter',
+          isDrugAddict: true
+        }
+      }
+    });
+
     store.findRecord('person', 1).then(function(person) {
       equal(person.get('hasDirtyAttributes'), false, "precond - person record should not be dirty");
 
@@ -54,9 +64,19 @@ test("setting a property on a record that has not changed does not cause it to b
 
 test("resetting a property on a record cause it to become clean again", function() {
   expect(3);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.push('person', { id: 1, name: "Peter", isDrugAddict: true });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Peter',
+          isDrugAddict: true
+        }
+      }
+    });
     store.findRecord('person', 1).then(function(person) {
       equal(person.get('hasDirtyAttributes'), false, "precond - person record should not be dirty");
       person.set('isDrugAddict', false);
@@ -69,9 +89,19 @@ test("resetting a property on a record cause it to become clean again", function
 
 test("a record becomes clean again only if all changed properties are reset", function() {
   expect(5);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.push('person', { id: 1, name: "Peter", isDrugAddict: true });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Peter',
+          isDrugAddict: true
+        }
+      }
+    });
     store.findRecord('person', 1).then(function(person) {
       equal(person.get('hasDirtyAttributes'), false, "precond - person record should not be dirty");
       person.set('isDrugAddict', false);
@@ -88,9 +118,15 @@ test("a record becomes clean again only if all changed properties are reset", fu
 
 test("a record reports its unique id via the `id` property", function() {
   expect(1);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
     store.findRecord('person', 1).then(function(record) {
       equal(get(record, 'id'), 1, "reports id as id by default");
     });
@@ -99,9 +135,15 @@ test("a record reports its unique id via the `id` property", function() {
 
 test("a record's id is included in its toString representation", function() {
   expect(1);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
-    store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
     store.findRecord('person', 1).then(function(record) {
       equal(record.toString(), '<(subclass of DS.Model):'+Ember.guidFor(record)+':1>', "reports id in toString");
     });
@@ -120,7 +162,15 @@ test("trying to set an `id` attribute should raise", function() {
 
   expectAssertion(function() {
     run(function() {
-      store.push('person', { id: 1, name: "Scumdale" });
+      store.push({
+        data: {
+          type: 'person',
+          id: '1',
+          attributes: {
+            name: 'Scumdale'
+          }
+        }
+      });
       store.findRecord('person', 1);
     });
   }, /You may not set `id`/);
@@ -128,6 +178,7 @@ test("trying to set an `id` attribute should raise", function() {
 
 test("a collision of a record's id with object function's name", function() {
   expect(1);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   var hasWatchMethod = Object.prototype.watch;
   try {
@@ -135,7 +186,13 @@ test("a collision of a record's id with object function's name", function() {
       Object.prototype.watch = function() {};
     }
     run(function() {
-      store.push('person', { id: 'watch' });
+      store.push({
+        data: {
+          type: 'person',
+          id: 'watch'
+        }
+      });
+
       store.findRecord('person', 'watch').then(function(record) {
         equal(get(record, 'id'), 'watch', "record is successfully created and could be found by its id");
       });
@@ -176,7 +233,12 @@ test("it should cache attributes", function() {
   var date = new Date(dateString);
 
   run(function() {
-    store.push('post', { id: 1 });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1'
+      }
+    });
     store.findRecord('post', 1).then(function(record) {
       run(function() {
         record.set('updatedAt', date);
@@ -187,7 +249,6 @@ test("it should cache attributes", function() {
       run(store, 'destroy');
     });
   });
-
 });
 
 test("changedAttributes() return correct values", function() {
@@ -207,10 +268,20 @@ test("changedAttributes() return correct values", function() {
 
 
   run(function() {
-    mascot = store.push('mascot', { id: 1, likes: 'JavaScript', isMascot: true });
+    store.push({
+      data: {
+        type: 'mascot',
+        id: '1',
+        attributes: {
+          likes: 'JavaScript',
+          isMascot: true
+        }
+      }
+    });
+    mascot = store.peekRecord('mascot', 1);
   });
 
-  equal(Ember.keys(mascot.changedAttributes()).length, 0, 'there are no initial changes');
+  equal(Object.keys(mascot.changedAttributes()).length, 0, 'there are no initial changes');
   run(function() {
     mascot.set('name', 'Tomster');   // new value
     mascot.set('likes', 'Ember.js'); // changed value
@@ -223,7 +294,71 @@ test("changedAttributes() return correct values", function() {
   run(function() {
     mascot.rollbackAttributes();
   });
-  equal(Ember.keys(mascot.changedAttributes()).length, 0, 'after rollback attributes there are no changes');
+  equal(Object.keys(mascot.changedAttributes()).length, 0, 'after rollback attributes there are no changes');
+});
+
+test("changedAttributes() works while the record is being saved", function() {
+  expect(1);
+  var cat;
+  var adapter = DS.Adapter.extend({
+    createRecord(store, model, snapshot) {
+      deepEqual(cat.changedAttributes(), { name: [undefined, 'Argon'], likes: [undefined, 'Cheese'] });
+      return {};
+    }
+  });
+  var Mascot = DS.Model.extend({
+    name: DS.attr('string'),
+    likes: DS.attr('string'),
+    isMascot: DS.attr('boolean')
+  });
+
+  var store = createStore({
+    mascot: Mascot,
+    adapter: adapter
+  });
+
+  run(function() {
+    cat = store.createRecord('mascot');
+    cat.setProperties({ name: 'Argon', likes: 'Cheese' });
+    cat.save();
+  });
+});
+
+test("changedAttributes() works while the record is being updated", function() {
+  expect(1);
+  var cat;
+  var adapter = DS.Adapter.extend({
+    updateRecord(store, model, snapshot) {
+      deepEqual(cat.changedAttributes(), { name: ['Argon', 'Helia'], likes: ['Cheese', 'Mussels'] });
+      return { id: '1', type: 'mascot' };
+    }
+  });
+  var Mascot = DS.Model.extend({
+    name: DS.attr('string'),
+    likes: DS.attr('string'),
+    isMascot: DS.attr('boolean')
+  });
+
+  var store = createStore({
+    mascot: Mascot,
+    adapter: adapter
+  });
+
+  run(function() {
+    store.push({
+      data: {
+        type: 'mascot',
+        id: '1',
+        attributes: {
+          name: 'Argon',
+          likes: 'Cheese'
+        }
+      }
+    });
+    cat = store.peekRecord('mascot', 1);
+    cat.setProperties({ name: 'Helia', likes: 'Mussels' });
+    cat.save();
+  });
 });
 
 test("a DS.Model does not require an attribute type", function() {
@@ -291,11 +426,16 @@ test("Calling attr(), belongsTo() or hasMany() throws a warning", function() {
 
 test("supports pushedData in root.deleted.uncommitted", function() {
   var record;
-  var hash = { id: 1 };
+  var hash = {
+    data: {
+      type: 'person',
+      id: '1'
+    }
+  };
   run(function() {
-    record = store.push('person', hash);
+    record = store.push(hash);
     record.deleteRecord();
-    store.push('person', hash);
+    store.push(hash);
     equal(get(record, 'currentState.stateName'), 'root.deleted.uncommitted',
       'record accepts pushedData is in root.deleted.uncommitted state');
   });
@@ -303,9 +443,14 @@ test("supports pushedData in root.deleted.uncommitted", function() {
 
 test("currentState is accessible when the record is created", function() {
   var record;
-  var hash = { id: 1 };
+  var hash = {
+    data: {
+      type: 'person',
+      id: '1'
+    }
+  };
   run(function() {
-    record = store.push('person', hash);
+    record = store.push(hash);
     equal(get(record, 'currentState.stateName'), 'root.loaded.saved',
           'records pushed into the store start in the loaded state');
   });
@@ -314,14 +459,33 @@ test("currentState is accessible when the record is created", function() {
 
 module("unit/model - DS.Model updating", {
   setup: function() {
-    array = [{ id: 1, name: "Scumbag Dale" }, { id: 2, name: "Scumbag Katz" }, { id: 3, name: "Scumbag Bryn" }];
     Person = DS.Model.extend({ name: DS.attr('string') });
     env = setupStore({
       person: Person
     });
     store = env.store;
     run(function() {
-      store.pushMany('person', array);
+      store.push({
+        data: [{
+          type: 'person',
+          id: '1',
+          attributes: {
+            name: 'Scumbag Dale'
+          }
+        }, {
+          type: 'person',
+          id: '2',
+          attributes: {
+            name: 'Scumbag Katz'
+          }
+        }, {
+          type: 'person',
+          id: '3',
+          attributes: {
+            name: 'Scumbag Bryn'
+          }
+        }]
+      });
     });
   },
   teardown: function() {
@@ -329,13 +493,13 @@ module("unit/model - DS.Model updating", {
       store.destroy();
       Person = null;
       store = null;
-      array = null;
     });
   }
 });
 
 test("a DS.Model can update its attributes", function() {
   expect(1);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
     store.findRecord('person', 2).then(function(person) {
@@ -467,6 +631,7 @@ test("setting a property to undefined on a newly created record should not impac
 // thrown out if/when the current `_attributes` hash logic is removed.
 test("setting a property back to its original value removes the property from the `_attributes` hash", function() {
   expect(3);
+  env.adapter.shouldBackgroundReloadRecord = () => false;
 
   run(function() {
     store.findRecord('person', 1).then(function(person) {
@@ -485,11 +650,6 @@ test("setting a property back to its original value removes the property from th
 
 module("unit/model - with a simple Person model", {
   setup: function() {
-    array = [
-      { id: 1, name: "Scumbag Dale" },
-      { id: 2, name: "Scumbag Katz" },
-      { id: 3, name: "Scumbag Bryn" }
-    ];
     Person = DS.Model.extend({
       name: DS.attr('string')
     });
@@ -497,7 +657,27 @@ module("unit/model - with a simple Person model", {
       person: Person
     });
     run(function() {
-      store.pushMany('person', array);
+      store.push({
+        data: [{
+          type: 'person',
+          id: '1',
+          attributes: {
+            name: 'Scumbag Dale'
+          }
+        }, {
+          type: 'person',
+          id: '2',
+          attributes: {
+            name: 'Scumbag Katz'
+          }
+        }, {
+          type: 'person',
+          id: '3',
+          attributes: {
+            name: 'Scumbag Bryn'
+          }
+        }]
+      });
     });
   },
   teardown: function() {
@@ -505,7 +685,6 @@ module("unit/model - with a simple Person model", {
       store.destroy();
       Person = null;
       store = null;
-      array = null;
     });
   }
 });
@@ -593,17 +772,12 @@ var converts = function(type, provided, expected) {
     registry = container;
   }
   var testStore = createStore({ model: Model });
-  var serializer = DS.JSONSerializer.create({
-    store: testStore,
-    container: container
-  });
 
   run(function() {
-    testStore.push('model', serializer.normalize(Model, { id: 1, name: provided }));
-    testStore.push('model', serializer.normalize(Model, { id: 2 }));
-    testStore.findRecord('model', 1).then(function(record) {
-      deepEqual(get(record, 'name'), expected, type + " coerces " + provided + " to " + expected);
-    });
+    testStore.push(testStore.normalize('model', { id: 1, name: provided }));
+    testStore.push(testStore.normalize('model', { id: 2 }));
+    var record = testStore.peekRecord('model', 1);
+    deepEqual(get(record, 'name'), expected, type + " coerces " + provided + " to " + expected);
   });
 
   // See: Github issue #421
@@ -625,14 +799,15 @@ var convertsFromServer = function(type, provided, expected) {
     container = new Ember.Container();
     registry = container;
   }
-  var testStore = createStore({ model: Model });
-  var serializer = DS.JSONSerializer.create({
-    store: testStore,
-    container: container
+  var testStore = createStore({
+    model: Model,
+    adapter: DS.Adapter.extend({
+      shouldBackgroundReloadRecord: () => false
+    })
   });
 
   run(function() {
-    testStore.push('model', serializer.normalize(Model, { id: "1", name: provided }));
+    testStore.push(testStore.normalize('model', { id: "1", name: provided }));
     testStore.findRecord('model', 1).then(function(record) {
       deepEqual(get(record, 'name'), expected, type + " coerces " + provided + " to " + expected);
     });
@@ -644,10 +819,20 @@ var convertsWhenSet = function(type, provided, expected) {
     name: DS.attr(type)
   });
 
-  var testStore = createStore({ model: Model });
+  var testStore = createStore({
+    model: Model,
+    adapter: DS.Adapter.extend({
+      shouldBackgroundReloadRecord: () => false
+    })
+  });
 
   run(function() {
-    testStore.push('model', { id: 2 });
+    testStore.push({
+      data: {
+        type: 'model',
+        id: '2'
+      }
+    });
     testStore.findRecord('model', 2).then(function(record) {
       set(record, 'name', provided);
       deepEqual(record.serialize().name, expected, type + " saves " + provided + " as " + expected);
@@ -707,11 +892,19 @@ test("a DS.Model can describe Date attributes", function() {
   });
 
   var store = createStore({
-    person: Person
+    person: Person,
+    adapter: DS.Adapter.extend({
+      shouldBackgroundReloadRecord: () => false
+    })
   });
 
   run(function() {
-    store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
     store.findRecord('person', 1).then(function(record) {
       run(function() {
         record.set('updatedAt', date);
@@ -835,7 +1028,15 @@ test("Pushing a record into the store should transition it to the loaded state",
   run(function() {
     var person = store.createRecord('person', { id: 1, name: 'TomHuda' });
     equal(person.get('isNew'), true, 'createRecord should put records into the new state');
-    store.push('person', { id: 1, name: 'TomHuda' });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'TomHuda'
+        }
+      }
+    });
     equal(person.get('isNew'), false, 'push should put records into the loaded state');
   });
 });
@@ -867,8 +1068,11 @@ test('toJSON looks up the JSONSerializer using the store instead of using JSONSe
   // present on the serializer due to using .create
   // instead of `store.serializerFor`.
   run(() => {
-    person = store.push('person', {
-      id: 1
+    person = store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
     });
   });
   var errorThrown = false;
@@ -900,24 +1104,4 @@ test('accessing attributes in the initializer should not throw an error', functi
   var store = env.store;
 
   run(() => store.createRecord('person'));
-});
-
-
-test('isDirty should log a deprecation warning', function() {
-  expect(1);
-  var Person = DS.Model.extend({
-    name: DS.attr('string')
-  });
-
-  var env = setupStore({
-    person: Person
-  });
-  var store = env.store;
-
-  run(function() {
-    var person = store.createRecord('person');
-    expectDeprecation(function() {
-      person.get('isDirty');
-    }, /DS.Model#isDirty has been deprecated/);
-  });
 });

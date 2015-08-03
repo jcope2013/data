@@ -4,7 +4,7 @@ var resolve = Ember.RSVP.resolve;
 var TestAdapter, store, person;
 var run = Ember.run;
 
-module("unit/store/adapter_interop - DS.Store working with a DS.Adapter", {
+module("unit/store/adapter-interop - DS.Store working with a DS.Adapter", {
   setup: function() {
     TestAdapter = DS.Adapter.extend();
   },
@@ -25,14 +25,6 @@ test('Adapter can be set as a name', function() {
   store = createStore({ adapter: '-rest' });
 
   ok(store.get('defaultAdapter') instanceof DS.RESTAdapter);
-});
-
-test('Default RESTAdapter has been deprecated', function() {
-  expectDeprecation(function() {
-    run(function() {
-      store = createStore({ adapter: '-rest' });
-    });
-  }, /You are currently using the default DS.RESTAdapter adapter. For Ember 2.0 the default adapter will be DS.JSONAPIAdapter. If you would like to continue using DS.RESTAdapter please create an application adapter that extends DS.RESTAdapter./);
 });
 
 test('Adapter can not be set as an instance', function() {
@@ -116,7 +108,7 @@ test("Returning a promise from `findRecord` asynchronously loads data", function
 });
 
 test("IDs provided as numbers are coerced to strings", function() {
-  expect(4);
+  expect(5);
 
   var adapter = TestAdapter.extend({
     findRecord: function(store, type, id, snapshot) {
@@ -134,7 +126,15 @@ test("IDs provided as numbers are coerced to strings", function() {
     currentStore.findRecord('test', 1).then(async(function(object) {
       equal(typeof object.get('id'), 'string', "id was coerced to a string");
       run(function() {
-        currentStore.push('test', { id: 2, name: "Scumbag Sam Saffron" });
+        currentStore.push({
+          data: {
+            type: 'test',
+            id: '2',
+            attributes: {
+              name: "Scumbag Sam Saffron"
+            }
+          }
+        });
       });
       return currentStore.findRecord('test', 2);
     })).then(async(function(object) {
@@ -144,9 +144,6 @@ test("IDs provided as numbers are coerced to strings", function() {
   });
 });
 
-
-var array = [{ id: "1", name: "Scumbag Dale" }, { id: "2", name: "Scumbag Katz" }, { id: "3", name: "Scumbag Bryn" }];
-
 test("can load data for the same record if it is not dirty", function() {
   expect(3);
 
@@ -155,17 +152,36 @@ test("can load data for the same record if it is not dirty", function() {
   });
 
   var store = createStore({
-    person: Person
+    person: Person,
+    adapter: DS.Adapter.extend({
+      shouldBackgroundReloadRecord: () => false
+    })
   });
 
   run(function() {
-    store.push('person', { id: 1, name: "Tom Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: "Tom Dale"
+        }
+      }
+    });
 
     store.findRecord('person', 1).then(async(function(tom) {
       equal(get(tom, 'hasDirtyAttributes'), false, "precond - record is not dirty");
       equal(get(tom, 'name'), "Tom Dale", "returns the correct name");
 
-      store.push('person', { id: 1, name: "Captain Underpants" });
+      store.push({
+        data: {
+          type: 'person',
+          id: '1',
+          attributes: {
+            name: "Captain Underpants"
+          }
+        }
+      });
       equal(get(tom, 'name'), "Captain Underpants", "updated record with new date");
     }));
   });
@@ -182,23 +198,6 @@ test("DS.Store loads individual records without explicit IDs with a custom prima
   equal(get(tom, 'name'), "Tom Dale", "the person was successfully loaded for the given ID");
 });
 */
-
-test("pushMany extracts ids from an Array of hashes if no ids are specified", function() {
-  expect(1);
-
-  var Person = DS.Model.extend({ name: DS.attr('string') });
-
-  var store = createStore({
-    person: Person
-  });
-
-  run(function() {
-    store.pushMany('person', array);
-    store.findRecord('person', 1).then(async(function(person) {
-      equal(get(person, 'name'), "Scumbag Dale", "correctly extracted id for loaded data");
-    }));
-  });
-});
 
 test("loadMany takes an optional Object and passes it on to the Adapter", function() {
   expect(2);
@@ -227,7 +226,7 @@ test("loadMany takes an optional Object and passes it on to the Adapter", functi
   });
 });
 
-test("Find with query calls the correct extract", function() {
+test("Find with query calls the correct normalizeResponse", function() {
   var passedQuery = { page: 1 };
 
   var Person = DS.Model.extend({
@@ -243,9 +242,9 @@ test("Find with query calls the correct extract", function() {
   var callCount = 0;
 
   var ApplicationSerializer = DS.JSONSerializer.extend({
-    extractFindQuery: function(store, type, payload) {
+    normalizeQueryResponse: function() {
       callCount++;
-      return [];
+      return this._super(...arguments);
     }
   });
 
@@ -260,7 +259,7 @@ test("Find with query calls the correct extract", function() {
   run(function() {
     store.query('person', passedQuery);
   });
-  equal(callCount, 1, 'extractQuery was called');
+  equal(callCount, 1, 'normalizeQueryResponse was called');
 });
 
 test("peekAll(type) returns a record array of all records of a specific type", function() {
@@ -273,7 +272,15 @@ test("peekAll(type) returns a record array of all records of a specific type", f
   });
 
   run(function() {
-    store.push('person', { id: 1, name: "Tom Dale" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: "Tom Dale"
+        }
+      }
+    });
   });
 
   var results = store.peekAll('person');
@@ -281,7 +288,15 @@ test("peekAll(type) returns a record array of all records of a specific type", f
   equal(get(results.objectAt(0), 'name'), "Tom Dale", "record has the correct information");
 
   run(function() {
-    store.push('person', { id: 2, name: "Yehuda Katz" });
+    store.push({
+      data: {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: "Yehuda Katz"
+        }
+      }
+    });
   });
   equal(get(results, 'length'), 2, "record array should have the new object");
   equal(get(results.objectAt(1), 'name'), "Yehuda Katz", "record has the correct information");
@@ -367,7 +382,10 @@ test("if an id is supplied in the initial data hash, it can be looked up using `
     name: DS.attr('string')
   });
   var store = createStore({
-    person: Person
+    person: Person,
+    adapter: DS.Adapter.extend({
+      shouldBackgroundReloadRecord: () => false
+    })
   });
   var person;
 
@@ -426,7 +444,16 @@ test("initial values of belongsTo can be passed in as the third argument to find
   var tom;
 
   run(function() {
-    tom = store.push('person', { id: 2, name: 'Tom' });
+    store.push({
+      data: {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Tom'
+        }
+      }
+    });
+    tom = store.peekRecord('person', 2);
     store.findRecord('person', 1, { preload: { friend: tom } });
   });
 });
@@ -484,7 +511,16 @@ test("initial values of hasMany can be passed in as the third argument to find a
   var tom;
 
   run(function() {
-    tom = store.push('person', { id: 2, name: 'Tom' });
+    store.push({
+      data: {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Tom'
+        }
+      }
+    });
+    tom = store.peekRecord('person', 2);
     store.findRecord('person', 1, { preload: { friends: [tom] } });
   });
 });
@@ -863,6 +899,7 @@ test("store should not reload record when shouldReloadRecord returns false", fun
       ok(true, 'shouldReloadRecord should be called when the record is in the store');
       return false;
     },
+    shouldBackgroundReloadRecord: () => false,
     findRecord: function() {
       ok(false, 'find should not be called when shouldReloadRecord returns false');
     }
@@ -874,7 +911,12 @@ test("store should not reload record when shouldReloadRecord returns false", fun
   });
 
   run(function() {
-    store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
     store.findRecord('person', 1);
   });
 });
@@ -903,7 +945,12 @@ test("store should reload record when shouldReloadRecord returns true", function
   });
 
   run(function() {
-    store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
     store.findRecord('person', 1).then(function(record) {
       equal(record.get('name'), 'Tom');
     });
@@ -936,7 +983,12 @@ test("store should not call shouldBackgroundReloadRecord when the store is alrea
   });
 
   run(function() {
-    store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
     store.findRecord('person', 1).then(function(record) {
       equal(record.get('name'), 'Tom');
     });
@@ -967,7 +1019,12 @@ test("store should not reload a record when `shouldBackgroundReloadRecord` is fa
   });
 
   run(function() {
-    store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
     store.findRecord('person', 1).then(function(record) {
       equal(record.get('name'), undefined);
     });
@@ -999,7 +1056,12 @@ test("store should reload the record in the background when `shouldBackgroundRel
   });
 
   run(function() {
-    store.push('person', { id: 1 });
+    store.push({
+      data: {
+        type: 'person',
+        id: '1'
+      }
+    });
     store.findRecord('person', 1).then(function(record) {
       equal(record.get('name'), undefined);
     });
@@ -1034,7 +1096,7 @@ test("store should not reload record array when shouldReloadAll returns false", 
   });
 
   run(function() {
-    store.find('person');
+    store.findAll('person');
   });
 });
 
@@ -1195,65 +1257,4 @@ module("unit/store/adapter_interop - find preload deprecations", {
       if (store) { store.destroy(); }
     });
   }
-});
-
-test("store#find with deprecated preload passes correct options to store#findRecord", function() {
-  expect(2);
-
-  var expectedOptions = { preload: { name: 'Tom' } };
-
-  store.reopen({
-    findRecord: function(modelName, id, options) {
-      deepEqual(options, expectedOptions,
-        'deprecated preload transformed to new options store#findRecord');
-    }
-  });
-
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.find('person', 1, { name: 'Tom' });
-      });
-    },
-    /Passing a preload argument to `store.find` is deprecated./
-  );
-});
-
-test("Using store#find with preload is deprecated", function() {
-  expect(2);
-
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.find('person', 1, { name: 'Tom' });
-      });
-    },
-    /Passing a preload argument to `store.find` is deprecated./
-  );
-});
-
-test("Using store#fetchById with preload is deprecated", function() {
-  expect(2);
-
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.fetchById('person', 1, { name: 'Tom' });
-      });
-    },
-    /Passing a preload argument to `store.fetchById` is deprecated./
-  );
-});
-
-test("Using store#findById with preload is deprecated", function() {
-  expect(2);
-
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.findById('person', 1, { name: 'Tom' });
-      });
-    },
-    /Passing a preload argument to `store.findById` is deprecated/
-  );
 });

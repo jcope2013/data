@@ -21,49 +21,14 @@ module("integration/adapter/find - Finding Records", {
   }
 });
 
-test("It raises an assertion when no type is passed", function() {
-  expectAssertion(function() {
-    store.find();
-  }, "You need to pass a type to the store's find method");
-});
-
 test("It raises an assertion when `undefined` is passed as id (#1705)", function() {
   expectAssertion(function() {
     store.find('person', undefined);
-  }, "You may not pass `undefined` as id to the store's find method");
+  }, "You cannot pass `undefined` as id to the store's find method");
 
   expectAssertion(function() {
     store.find('person', null);
-  }, "You may not pass `null` as id to the store's find method");
-});
-
-test("store.find(type) is deprecated", function() {
-  env.registry.register('adapter:person', DS.Adapter.extend({
-    findAll: function(store, typeClass) {
-      return [];
-    }
-  }));
-
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.find('person');
-      });
-    },
-    'Using store.find(type) has been deprecated. Use store.findAll(type) to retrieve all records for a given type.'
-  );
-});
-
-test("store.findAll should trigger a deprecation warning about store.shouldReloadAll", function() {
-  env.adapter.findAll = function() {
-    return Ember.RSVP.resolve([]);
-  };
-
-  run(function() {
-    expectDeprecation(function() {
-      store.findAll('person');
-    }, 'The default behavior of shouldReloadAll will change in Ember Data 2.0 to always return false when there is at least one "person" record in the store. If you would like to preserve the current behavior please override shouldReloadAll in your adapter:application and return true.');
-  });
+  }, "You cannot pass `null` as id to the store's find method");
 });
 
 test("When a single record is requested, the adapter's find method should be called unless it's loaded.", function() {

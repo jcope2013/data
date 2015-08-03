@@ -112,19 +112,38 @@ asyncTest("find calls do not resolve when the store is destroyed", function() {
 
 test("destroying the store correctly cleans everything up", function() {
   var car, person;
+  env.adapter.shouldBackgroundReloadRecord = () => false;
   run(function() {
-    car = store.push('car', {
-      id: 1,
-      make: 'BMC',
-      model: 'Mini',
-      person: 1
+    store.push({
+      data: [{
+        type: 'car',
+        id: '1',
+        attributes: {
+          make: 'BMC',
+          model: 'Mini'
+        },
+        relationships: {
+          person: {
+            data: { type: 'person', id: '1' }
+          }
+        }
+      }, {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          cars: {
+            data: [
+              { type: 'car', id: '1' }
+            ]
+          }
+        }
+      }]
     });
-
-    person = store.push('person', {
-      id: 1,
-      name: 'Tom Dale',
-      cars: [1]
-    });
+    car = store.peekRecord('car', 1);
+    person = store.peekRecord('person', 1);
   });
 
   var personWillDestroy = tap(person, 'willDestroy');
@@ -179,30 +198,6 @@ test("destroying the store correctly cleans everything up", function() {
   equal(filterdPeopleWillDestroy.called.length, 1, 'expected filterdPeople.willDestroy to have been called once');
 });
 
-module("integration/store - findById() [deprecated]", {
-  setup: function() {
-    initializeStore(DS.RESTAdapter.extend());
-  }
-});
-
-test("store.findById() is deprecated", function() {
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.push('person', { id: 1, name: "Tomster" });
-        store.findById('person', 1);
-      });
-    },
-    'Using store.findById() has been deprecated. Use store.findRecord() to return a record for a given type and id combination.'
-  );
-});
-
-module("integration/store - fetch", {
-  setup: function() {
-    initializeStore(DS.RESTAdapter.extend());
-  }
-});
-
 function ajaxResponse(value) {
   var passedUrl, passedVerb, passedHash;
   env.adapter.ajax = function(url, verb, hash) {
@@ -214,22 +209,7 @@ function ajaxResponse(value) {
   };
 }
 
-test("Using store#fetch is deprecated", function() {
-  ajaxResponse({
-    cars: [
-      { id: 1, make: 'BMW', model: 'Mini' }
-    ]
-  });
 
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.fetch('car', 1);
-      });
-    },
-    'Using store.fetch() has been deprecated. Use store.findRecord for fetching individual records or store.findAll for collections'
-  );
-});
 
 module("integration/store - findRecord { reload: true }", {
   setup: function() {
@@ -240,7 +220,7 @@ module("integration/store - findRecord { reload: true }", {
 test("Using store#findRecord on non existing record fetches it from the server", function() {
   expect(2);
 
-  env.registry.register('serializer:application', DS.RESTSerializer.extend({ isNewSerializerAPI: true }));
+  env.registry.register('serializer:application', DS.RESTSerializer);
   ajaxResponse({
     cars: [{
       id: 20,
@@ -264,13 +244,19 @@ test("Using store#findRecord on existing record reloads it", function() {
   var car;
 
   run(function() {
-    car = store.push('car', {
-      id: 1,
-      make: 'BMC',
-      model: 'Mini'
+    store.push({
+      data: {
+        type: 'car',
+        id: '1',
+        attributes: {
+          make: 'BMC',
+          model: 'Mini'
+        }
+      }
     });
-
+    car = store.peekRecord('car', 1);
   });
+
   ajaxResponse({
     cars: [{
       id: 1,
@@ -292,21 +278,6 @@ module("integration/store - findAll", {
   setup: function() {
     initializeStore(DS.RESTAdapter.extend());
   }
-});
-
-test("store#fetchAll() is deprecated", function() {
-  ajaxResponse({
-    cars: []
-  });
-
-  expectDeprecation(
-    function() {
-      run(function() {
-        store.fetchAll('car');
-      });
-    },
-    'Using store.fetchAll(type) has been deprecated. Use store.findAll(type, { reload: true }) to retrieve all records for a given type.'
-  );
 });
 
 test("Using store#findAll with no records triggers a query", function() {
@@ -335,14 +306,19 @@ test("Using store#findAll with no records triggers a query", function() {
   });
 });
 
-test("Using store#findAll with existing records performs a query, updating existing records and returning new ones", function() {
-  expect(3);
+test("Using store#findAll with existing records performs a query in the background, updating existing records and returning new ones", function() {
+  expect(4);
 
   run(function() {
-    store.push('car', {
-      id: 1,
-      make: 'BMC',
-      model: 'Mini'
+    store.push({
+      data: {
+        type: 'car',
+        id: '1',
+        attributes: {
+          make: 'BMC',
+          model: 'Mini'
+        }
+      }
     });
   });
 
@@ -364,19 +340,39 @@ test("Using store#findAll with existing records performs a query, updating exist
 
   run(function() {
     store.findAll('car').then(function(cars) {
-      equal(cars.get('length'), 2, 'There is 2 cars in the store now');
-      var mini = cars.findBy('id', '1');
-      equal(mini.get('model'), 'New Mini', 'Existing records have been updated');
+      equal(cars.get('length'), 1, 'Store resolves with the existing records');
     });
+  });
+
+  run(function() {
+    var cars = store.peekAll('car');
+    equal(cars.get('length'), 2, 'There is 2 cars in the store now');
+    var mini = cars.findBy('id', '1');
+    equal(mini.get('model'), 'New Mini', 'Existing records have been updated');
   });
 });
 
-test("store#findAll should return all known records even if they are not in the adapter response", function() {
-  expect(4);
+test("store#findAll should eventually return all known records even if they are not in the adapter response", function() {
+  expect(5);
 
   run(function() {
-    store.push('car', { id: 1, make: 'BMC', model: 'Mini' });
-    store.push('car', { id: 2, make: 'BMCW', model: 'Isetta' });
+    store.push({
+      data: [{
+        type: 'car',
+        id: '1',
+        attributes: {
+          make: 'BMC',
+          model: 'Mini'
+        }
+      }, {
+        type: 'car',
+        id: '2',
+        attributes: {
+          make: 'BMCW',
+          model: 'Isetta'
+        }
+      }]
+    });
   });
 
   ajaxResponse({
@@ -393,14 +389,22 @@ test("store#findAll should return all known records even if they are not in the 
   run(function() {
     store.findAll('car').then(function(cars) {
       equal(cars.get('length'), 2, 'It returns all cars');
-      var mini = cars.findBy('id', '1');
-      equal(mini.get('model'), 'New Mini', 'Existing records have been updated');
 
       var carsInStore = store.peekAll('car');
       equal(carsInStore.get('length'), 2, 'There is 2 cars in the store');
     });
   });
+
+  run(function() {
+    var cars = store.peekAll('car');
+    var mini = cars.findBy('id', '1');
+    equal(mini.get('model'), 'New Mini', 'Existing records have been updated');
+
+    var carsInStore = store.peekAll('car');
+    equal(carsInStore.get('length'), 2, 'There is 2 cars in the store');
+  });
 });
+
 
 test("Using store#fetch on an empty record calls find", function() {
   expect(2);
@@ -414,10 +418,21 @@ test("Using store#fetch on an empty record calls find", function() {
   });
 
   run(function() {
-    store.push('person', {
-      id: 1,
-      name: 'Tom Dale',
-      cars: [20]
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        },
+        relationships: {
+          cars: {
+            data: [
+              { type: 'car', id: '20' }
+            ]
+          }
+        }
+      }
     });
   });
 
@@ -461,10 +476,16 @@ test("Using store#deleteRecord should mark the model for removal", function() {
   var person;
 
   run(function() {
-    person = store.push('person', {
-      id: 1,
-      name: 'Tom Dale'
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Tom Dale'
+        }
+      }
     });
+    person = store.peekRecord('person', 1);
   });
 
   ok(store.hasRecordForId('person', 1), 'expected the record to be in the store');

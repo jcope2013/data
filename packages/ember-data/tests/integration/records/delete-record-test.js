@@ -22,11 +22,73 @@ module("integration/deletedRecord - Deleting Records", {
   }
 });
 
+test("records should not be removed from record arrays just after deleting, but only after commiting them", function () {
+  var adam, dave;
+
+  env.adapter.deleteRecord = function() {
+    return Ember.RSVP.Promise.resolve();
+  };
+
+  var all;
+  run(function() {
+    env.store.push({
+      data: [{
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Adam Sunderland'
+        }
+      }, {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Dave Sunderland'
+        }
+      }]
+    });
+    adam = env.store.peekRecord('person', 1);
+    dave = env.store.peekRecord('person', 2);
+    all  = env.store.peekAll('person');
+  });
+
+
+  // pre-condition
+  equal(all.get('length'), 2, 'pre-condition: 2 records in array');
+
+  Ember.run(adam, 'deleteRecord');
+
+  equal(all.get('length'), 2, '2 records in array after deleteRecord');
+
+  Ember.run(adam, 'save');
+
+  equal(all.get('length'), 1, '1 record in array after deleteRecord and save');
+});
+
 test("records can be deleted during record array enumeration", function () {
   var adam, dave;
+
+  env.adapter.deleteRecord = function() {
+    return Ember.RSVP.Promise.resolve();
+  };
+
   run(function() {
-    adam = env.store.push('person', { id: 1, name: "Adam Sunderland" });
-    dave = env.store.push('person', { id: 2, name: "Dave Sunderland" });
+    env.store.push({
+      data: [{
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Adam Sunderland'
+        }
+      }, {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Dave Sunderland'
+        }
+      }]
+    });
+    adam = env.store.peekRecord('person', 1);
+    dave = env.store.peekRecord('person', 2);
   });
   var all = env.store.peekAll('person');
 
@@ -35,7 +97,7 @@ test("records can be deleted during record array enumeration", function () {
 
   Ember.run(function() {
     all.forEach(function(record) {
-      record.deleteRecord();
+      record.destroyRecord();
     });
   });
 
@@ -46,8 +108,23 @@ test("records can be deleted during record array enumeration", function () {
 test("when deleted records are rolled back, they are still in their previous record arrays", function () {
   var jaime, cersei;
   run(function() {
-    jaime = env.store.push('person', { id: 1, name: "Jaime Lannister" });
-    cersei = env.store.push('person', { id: 2, name: "Cersei Lannister" });
+    env.store.push({
+      data: [{
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Jaime Lannister'
+        }
+      }, {
+        type: 'person',
+        id: '2',
+        attributes: {
+          name: 'Cersei Lannister'
+        }
+      }]
+    });
+    jaime = env.store.peekRecord('person', 1);
+    cersei = env.store.peekRecord('person', 2);
   });
   var all = env.store.peekAll('person');
   var filtered;

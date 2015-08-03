@@ -9,23 +9,94 @@ import { pluralize, singularize } from 'ember-inflector/lib/system/string';
 var dasherize = Ember.String.dasherize;
 
 /**
+  Ember Data 2.0 Serializer:
+
+  In Ember Data a Serializer is used to serialize and deserialize
+  records when they are transferred in and out of an external source.
+  This process involves normalizing property names, transforming
+  attribute values and serializing relationships.
+
+  `JSONAPISerializer` supports the http://jsonapi.org/ spec and is the
+  serializer recommended by Ember Data.
+
+  This serializer normalizes a JSON API payload that looks like:
+
+  ```js
+
+    // models/player.js
+    import DS from "ember-data";
+
+    export default DS.Model.extend({
+      name: DS.attr(),
+      skill: DS.attr(),
+      gamesPlayed: DS.attr(),
+      club: DS.belongsTo('club')
+    });
+
+    // models/club.js
+    import DS from "ember-data";
+
+    export default DS.Model.extend({
+      name: DS.attr(),
+      location: DS.attr(),
+      players: DS.hasMany('player')
+    });
+  ```
+
+  ```js
+
+    {
+      "data": [
+        {
+          "attributes": {
+            "name": "Benfica",
+            "location": "Portugal"
+          },
+          "id": "1",
+          "relationships": {
+            "players": {
+              "data": [
+                {
+                  "id": "3",
+                  "type": "players"
+                }
+              ]
+            }
+          },
+          "type": "clubs"
+        }
+      ],
+      "included": [
+        {
+          "attributes": {
+            "name": "Eusebio Silva Ferreira",
+            "skill": "Rocket shot",
+            "games-played": 431
+          },
+          "id": "3",
+          "relationships": {
+            "club": {
+              "data": {
+                "id": "1",
+                "type": "clubs"
+              }
+            }
+          },
+          "type": "players"
+        }
+      ]
+    }
+  ```
+
+  to the format that the Ember Data store expects.
+
   @class JSONAPISerializer
   @namespace DS
   @extends DS.JSONSerializer
 */
 export default JSONSerializer.extend({
 
-  /*
-    This is only to be used temporarily during the transition from the old
-    serializer API to the new one.
-
-    `JSONAPISerializer` only supports the new Serializer API.
-
-    @property isNewSerializerAPI
-  */
-  isNewSerializerAPI: true,
-
-  /*
+  /**
     @method _normalizeDocumentHelper
     @param {Object} documentHash
     @return {Object}
@@ -35,7 +106,7 @@ export default JSONSerializer.extend({
 
     if (Ember.typeOf(documentHash.data) === 'object') {
       documentHash.data = this._normalizeResourceHelper(documentHash.data);
-    } else {
+    } else if (Ember.typeOf(documentHash.data) === 'array') {
       documentHash.data = documentHash.data.map(this._normalizeResourceHelper, this);
     }
 
@@ -46,7 +117,7 @@ export default JSONSerializer.extend({
     return documentHash;
   },
 
-  /*
+  /**
     @method _normalizeRelationshipDataHelper
     @param {Object} relationshipDataHash
     @return {Object}
@@ -58,7 +129,7 @@ export default JSONSerializer.extend({
     return relationshipDataHash;
   },
 
-  /*
+  /**
     @method _normalizeResourceHelper
     @param {Object} resourceHash
     @return {Object}
@@ -98,7 +169,7 @@ export default JSONSerializer.extend({
     return normalizedPayload;
   },
 
-  /*
+  /**
     @method extractAttributes
     @param {DS.Model} modelClass
     @param {Object} resourceHash
@@ -119,7 +190,7 @@ export default JSONSerializer.extend({
     return attributes;
   },
 
-  /*
+  /**
     @method extractRelationship
     @param {Object} relationshipHash
     @return {Object}
@@ -137,7 +208,7 @@ export default JSONSerializer.extend({
     return relationshipHash;
   },
 
-  /*
+  /**
     @method extractRelationships
     @param {Object} modelClass
     @param {Object} resourceHash
@@ -161,8 +232,8 @@ export default JSONSerializer.extend({
     return relationships;
   },
 
-  /*
-    @method extractType
+  /**
+    @method _extractType
     @param {DS.Model} modelClass
     @param {Object} resourceHash
     @return {String}
@@ -190,7 +261,7 @@ export default JSONSerializer.extend({
     return pluralize(modelName);
   },
 
-  /*
+  /**
     @method normalize
     @param {DS.Model} modelClass
     @param {Object} resourceHash
@@ -200,7 +271,7 @@ export default JSONSerializer.extend({
     this.normalizeUsingDeclaredMapping(modelClass, resourceHash);
 
     let data = {
-      id:            this.extractId(resourceHash),
+      id:            this.extractId(modelClass, resourceHash),
       type:          this._extractType(modelClass, resourceHash),
       attributes:    this.extractAttributes(modelClass, resourceHash),
       relationships: this.extractRelationships(modelClass, resourceHash)
@@ -212,6 +283,26 @@ export default JSONSerializer.extend({
   },
 
   /**
+   `keyForAttribute` can be used to define rules for how to convert an
+   attribute name in your model to a key in your JSON.
+   By default `JSONAPISerializer` follows the format used on the examples of
+   http://jsonapi.org/format and uses dashes as the word separator in the JSON
+   attribute keys.
+
+   This behaviour can be easily customized by extending this method.
+
+   Example
+
+   ```app/serializers/application.js
+   import DS from 'ember-data';
+
+   export default DS.JSONAPISerializer.extend({
+     keyForAttribute: function(attr, method) {
+       return Ember.String.dasherize(attr).toUpperCase();
+     }
+   });
+   ```
+
    @method keyForAttribute
    @param {String} key
    @param {String} method
@@ -222,6 +313,25 @@ export default JSONSerializer.extend({
   },
 
   /**
+   `keyForRelationship` can be used to define a custom key when
+   serializing and deserializing relationship properties.
+   By default `JSONAPISerializer` follows the format used on the examples of
+   http://jsonapi.org/format and uses dashes as word separators in
+   relationship properties.
+
+   This behaviour can be easily customized by extending this method.
+
+   Example
+
+    ```app/serializers/post.js
+    import DS from 'ember-data';
+
+    export default DS.JSONAPISerializer.extend({
+      keyForRelationship: function(key, relationship, method) {
+        return Ember.String.underscore(key);
+      }
+    });
+    ```
    @method keyForRelationship
    @param {String} key
    @param {String} typeClass

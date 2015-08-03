@@ -91,28 +91,26 @@ function belongsTo(modelName, options) {
 
   opts = opts || {};
 
-  var shouldWarnAsync = false;
-  if (typeof opts.async === 'undefined') {
-    shouldWarnAsync = true;
-  }
-
   var meta = {
     type: userEnteredModelName,
     isRelationship: true,
     options: opts,
     kind: 'belongsTo',
-    key: null,
-    shouldWarnAsync: shouldWarnAsync
+    key: null
   };
 
   return Ember.computed({
     get: function(key) {
-      Ember.warn('You provided a serialize option on the "' + key + '" property in the "' + this._internalModel.modelName + '" class, this belongs in the serializer. See DS.Serializer and it\'s implementations http://emberjs.com/api/data/classes/DS.Serializer.html', !opts.hasOwnProperty('serialize'));
-      Ember.warn('You provided an embedded option on the "' + key + '" property in the "' + this._internalModel.modelName + '" class, this belongs in the serializer. See DS.EmbeddedRecordsMixin http://emberjs.com/api/data/classes/DS.EmbeddedRecordsMixin.html', !opts.hasOwnProperty('embedded'));
+      if (opts.hasOwnProperty('serialize')) {
+        Ember.warn(`You provided a serialize option on the "${key}" property in the "${this._internalModel.modelName}" class, this belongs in the serializer. See DS.Serializer and it's implementations http://emberjs.com/api/data/classes/DS.Serializer.html`, false, {
+          id: 'ds.model.serialize-option-in-belongs-to'
+        });
+      }
 
-      if (meta.shouldWarnAsync) {
-        Ember.deprecate(`In Ember Data 2.0, relationships will be asynchronous by default. You must set \`${key}: DS.belongsTo('${modelName}', { async: false })\` if you wish for a relationship remain synchronous.`);
-        meta.shouldWarnAsycn = false;
+      if (opts.hasOwnProperty('embedded')) {
+        Ember.warn(`You provided an embedded option on the "${key}" property in the "${this._internalModel.modelName}" class, this belongs in the serializer. See DS.EmbeddedRecordsMixin http://emberjs.com/api/data/classes/DS.EmbeddedRecordsMixin.html`, false, {
+          id: 'ds.model.embedded-option-in-belongs-to'
+        });
       }
 
       return this._internalModel._relationships.get(key).getRecord();

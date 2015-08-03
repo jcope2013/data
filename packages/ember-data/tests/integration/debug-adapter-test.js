@@ -8,8 +8,10 @@ module("DS.DebugAdapter", {
       App = Ember.Application.create();
       App.toString = function() { return 'App'; };
 
-      App.ApplicationStore = DS.Store.extend({
-        adapter: DS.Adapter.extend()
+      App.StoreService = DS.Store.extend({});
+
+      App.ApplicationAdapter = DS.Adapter.extend({
+        shouldBackgroundReloadRecord: () => false
       });
 
       App.Post = DS.Model.extend({
@@ -54,7 +56,15 @@ test("Watching Model Types", function() {
   debugAdapter.watchModelTypes(added, updated);
 
   run(function() {
-    store.push('post', { id: 1, title: 'Post Title' });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Post Title'
+        }
+      }
+    });
   });
 });
 
@@ -62,7 +72,15 @@ test("Watching Records", function() {
   var post, record, addedRecords, updatedRecords, removedIndex, removedCount;
 
   Ember.run(function() {
-    store.push('post', { id: '1', title: 'Clean Post' });
+    store.push({
+      data: {
+        type: 'post',
+        id: '1',
+        attributes: {
+          title: 'Clean Post'
+        }
+      }
+    });
   });
 
   var recordsAdded = function(wrappedRecords) {
@@ -116,7 +134,7 @@ test("Watching Records", function() {
   deepEqual(record.searchKeywords, ['2', 'New Post']);
   deepEqual(record.color, 'green');
 
-  Ember.run(post, 'deleteRecord');
+  Ember.run(post, 'unloadRecord');
 
   equal(removedIndex, 1);
   equal(removedCount, 1);
